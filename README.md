@@ -1,1 +1,1 @@
-# Crop_Disease_Detector
+# Crop_Profit_Forecasting
