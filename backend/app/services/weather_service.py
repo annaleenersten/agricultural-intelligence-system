@@ -1,14 +1,15 @@
 import requests
 import pandas as pd
 
-def get_weather_features(lat, lon):
-    url = "https://api.open-meteo.com/v1/forecast"
+def get_weather_features(lat, lon, start_date, end_date):
+    url = "https://archive-api.open-meteo.com/v1/archive"
 
     params = {
         "latitude": lat,
         "longitude": lon,
+        "start_date": start_date,
+        "end_date": end_date,
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max",
-        "past_days": 7,
         "forecast_days": 0,
         "timezone": "auto"
     }
