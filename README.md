@@ -17,6 +17,16 @@ This project:
 
 ---
 
+## Data
+
+USDA Crop Data:
+https://quickstats.nass.usda.gov/
+
+Weather Data:
+https://open-meteo.com/
+
+---
+
 ## Setup
 
 ### 1. Create a Virtual Environment
