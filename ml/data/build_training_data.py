@@ -1,38 +1,70 @@
 from backend.app.services.crop_service import get_crop_yield_data
 from backend.app.services.weather_service import get_weather_features
+from backend.app.config.locationsAndCrops_config import STATE_COORDS
+from backend.app.config.locationsAndCrops_config import STATES, CROPS
 import pandas as pd
+import joblib
+import time
+
+START_YEAR = 2000
+END_YEAR = 2023
 
 
 def build_training_data():
 
-    usda = get_crop_yield_data("CORN", "WA", "2015")
+    rows = []
 
-    if usda is None or "error" in usda:
-        print("USDA failed")
-        return
+    for crop in CROPS:
+        for state in STATES:
 
-    for _, row in usda.iterrows():
+            usda = get_crop_yield_data(crop, state, str(START_YEAR))
 
-        year = row["year"]
+            if usda is None or isinstance(usda, dict):
+                continue
 
-        weather = get_weather_features(
-            48.42,
-            -122.33,
-            f"{year}-01-01",
-            f"{year}-12-31"
-        )
+            lat, lon = STATE_COORDS[state]
 
-    weather_df = pd.DataFrame([weather] * len(usda))
+            for _, r in usda.iterrows():
 
-    df = pd.concat([usda.reset_index(drop=True), weather_df], axis=1)
+                year = int(r["year"])
 
-    df = df.dropna()
+                if year < START_YEAR or year > END_YEAR:
+                    continue
+
+                weather = get_weather_features(
+                    lat,
+                    lon,
+                    f"{year}-04-01",
+                    f"{year}-09-30"
+                )
+
+                if weather is None:
+                    continue
+
+                rows.append({
+                    "year": year,
+                    "state": state,
+                    "crop": crop,
+                    "yield": r["yield"],
+                    "avg_temp": weather["avg_temp"],
+                    "total_rain": weather["total_rain"],
+                    "avg_wind": weather["avg_wind"],
+                })
+
+                time.sleep(0.2)
+
+    df = pd.DataFrame(rows).dropna()
+
+    # ONE HOT ENCODING
+    df = pd.get_dummies(df, columns=["state", "crop"])
+
+    # SAVE FEATURE COLUMNS (CRITICAL FIX)
+    feature_cols = [c for c in df.columns if c != "yield"]
+    joblib.dump(feature_cols, "ml/models/features.pkl")
 
     df.to_csv("ml/data/training_data.csv", index=False)
 
-    print(df.head())
-    print("Saved training data")
-
+    print("Training data saved")
     return df
 
 

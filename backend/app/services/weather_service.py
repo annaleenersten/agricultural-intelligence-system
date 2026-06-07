@@ -14,26 +14,21 @@ def get_weather_features(lat, lon, start_date, end_date):
         "timezone": "auto"
     }
 
-    response = requests.get(url, params=params)
-    data = response.json()
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
 
-    print("API RESPONSE:", data)
+        if "daily" not in data:
+            return None  
 
-    if "daily" not in data:
+        df = pd.DataFrame(data["daily"])
+
         return {
-            "error": "No 'daily' key in response",
-            "api_response": data
+            "avg_temp": df["temperature_2m_max"].mean(),
+            "total_rain": df["precipitation_sum"].sum(),
+            "avg_wind": df["windspeed_10m_max"].mean()
         }
 
-    daily = data["daily"]
-
-    df = pd.DataFrame(daily)
-
-    print(df.columns)
-
-    return {
-        "avg_temp": df["temperature_2m_max"].mean(),
-        "avg_temp_min": df["temperature_2m_min"].mean(),
-        "total_rain": df["precipitation_sum"].sum(),
-        "avg_wind": df["windspeed_10m_max"].mean()
-    }
+    except Exception as e:
+        print("Weather API failed:", e)
+        return None

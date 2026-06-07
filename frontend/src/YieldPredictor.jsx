@@ -72,9 +72,9 @@ export default function YieldPredictor() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+          className="w-full py-3 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition disabled:opacity-50"
         >
-          {loading ? "Analyzing weather + soil..." : "Predict Yield"}
+          {loading ? "Analyzing weather" : "Predict Yield"}
         </button>
 
       </form>
