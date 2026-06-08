@@ -1,149 +1,112 @@
-from backend.app.services.crop_service import get_crop_yield_data
-from backend.app.services.weather_service import get_weather_data
-from backend.app.config.locationsAndCrops_config import (
-    STATE_COORDS,
-    STATES,
-    CROPS
-)
-
 import pandas as pd
 import joblib
 import os
-import time
 
-START_YEAR = 2000
+from backend.app.services.crop_service import get_crop_yield_data
+from ml.data.locationsAndCrops_config import STATES, CROPS
+
+# -----------------------------
+# CONFIG
+# -----------------------------
+START_YEAR = 2018
 END_YEAR = 2023
 
-CACHE_FILE = "ml/data/weather_cache.pkl"
+OUTPUT_FILE = "ml/data/training_data.csv"
+FEATURE_FILE = "ml/models/features.pkl"
 
 
+# -----------------------------
+# LOAD USDA DATA SAFELY
+# -----------------------------
+def load_usda_data(crop, state):
+    try:
+        df = get_crop_yield_data(crop, state, str(START_YEAR))
+
+        if df is None or isinstance(df, dict):
+            return None
+
+        return df
+
+    except Exception as e:
+        print(f"[USDA ERROR] {state}-{crop}: {e}")
+        return None
+
+
+# -----------------------------
+# BUILD DATASET (BASELINE ONLY)
+# -----------------------------
 def build_training_data():
 
     rows = []
 
-    # -----------------------------
-    # LOAD WEATHER CACHE
-    # -----------------------------
-    if os.path.exists(CACHE_FILE):
-        weather_cache = joblib.load(CACHE_FILE)
-        print(f"Loaded {len(weather_cache)} cached weather records")
-    else:
-        weather_cache = {}
+    print("\nBuilding baseline training dataset (NO WEATHER)\n")
 
-    # -----------------------------
-    # BUILD DATASET
-    # -----------------------------
     for crop in CROPS:
         for state in STATES:
 
-            print(f"\nProcessing {crop} - {state}")
+            print(f"Processing {crop} - {state}")
 
-            usda = get_crop_yield_data(
-                crop,
-                state,
-                str(START_YEAR)
-            )
+            df = load_usda_data(crop, state)
 
-            if usda is None or isinstance(usda, dict):
-                print("Skipping USDA failure")
+            if df is None or df.empty:
+                print(f"Skipping {state}-{crop}")
                 continue
 
-            lat, lon = STATE_COORDS[state]
+            for _, r in df.iterrows():
 
-            for _, r in usda.iterrows():
+                try:
+                    year = int(r["year"])
+                    yield_value = pd.to_numeric(r["yield"], errors="coerce")
 
-                year = int(r["year"])
-
-                if year < START_YEAR or year > END_YEAR:
-                    continue
-
-                cache_key = (state, year)
-
-                # -----------------------------
-                # WEATHER CACHE
-                # -----------------------------
-                if cache_key not in weather_cache:
-
-                    print(f"Fetching weather: {state} {year}")
-
-                    weather = get_weather_data(
-                        lat,
-                        lon,
-                        f"{year}-04-01",
-                        f"{year}-09-30"
-                    )
-
-                    if weather is None:
-                        print(f"Weather failed: {state} {year}")
+                    if year < START_YEAR or year > END_YEAR:
                         continue
 
-                    weather_cache[cache_key] = weather
+                    if pd.isna(yield_value):
+                        continue
 
-                    # save cache immediately
-                    joblib.dump(
-                        weather_cache,
-                        CACHE_FILE
-                    )
+                    rows.append({
+                        "year": year,
+                        "state": state.upper(),
+                        "county": str(r.get("county", "STATE_LEVEL")).upper(),
+                        "crop": crop.upper(),
+                        "yield": float(yield_value),
+                    })
 
-                    # let API load
-                    time.sleep(0.5)
-
-                weather = weather_cache[cache_key]
-
-                rows.append({
-                    "year": year,
-                    "state": state,
-                    "crop": crop,
-
-                    "yield": r["yield"],
-
-                    "avg_temp": weather["avg_temp"],
-                    "avg_temp_min": weather["avg_temp_min"],
-                    "total_rain": weather["total_rain"],
-                    "avg_wind": weather["avg_wind"],
-                })
+                except Exception as e:
+                    print("Row error:", e)
+                    continue
 
     # -----------------------------
-    # CREATE DATAFRAME
+    # DATAFRAME
     # -----------------------------
     df = pd.DataFrame(rows)
 
     if df.empty:
-        print("No training data generated")
+        print("❌ No data generated")
         return None
 
+    # clean
     df = df.dropna()
 
     # -----------------------------
-    # ONE-HOT ENCODE
+    # ONE-HOT ENCODING
     # -----------------------------
-    df = pd.get_dummies(
-        df,
-        columns=["state", "crop"]
-    )
+    df = pd.get_dummies(df, columns=["state", "county", "crop"])
 
     # -----------------------------
-    # SAVE FEATURE LIST
+    # FEATURES
     # -----------------------------
-    feature_cols = [
-        c for c in df.columns
-        if c != "yield"
-    ]
+    feature_cols = [c for c in df.columns if c != "yield"]
 
-    joblib.dump(
-        feature_cols,
-        "ml/models/features.pkl"
-    )
+    joblib.dump(feature_cols, FEATURE_FILE)
 
     # -----------------------------
-    # SAVE DATASET
+    # SAVE CSV
     # -----------------------------
-    df.to_csv(
-        "ml/data/training_data.csv",
-        index=False
-    )
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    df.to_csv(OUTPUT_FILE, index=False)
 
-    print("\nTraining data saved")
+    print("\n✅ DONE")
     print(f"Rows: {len(df)}")
     print(f"Features: {len(feature_cols)}")
 
