@@ -3,9 +3,6 @@ __pycache__/
 venv/
 *.pyc
 
-# ML models
-ml/models/*.pkl
-
 # Node
 node_modules/
 

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import pandas as pd
 import joblib
 
-from backend.app.services.weather_service import get_weather_features
+from backend.app.services.weather_service import get_weather_data
 from backend.app.config.locationsAndCrops_config import STATE_COORDS
 
 app = FastAPI()
@@ -34,7 +34,7 @@ def predict_yield(data: YieldRequest):
 
     lat, lon = STATE_COORDS[data.location]
 
-    weather = get_weather_features(
+    weather = get_weather_data(
         lat,
         lon,
         f"{data.year}-04-01",

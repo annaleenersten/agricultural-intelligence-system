@@ -1,25 +1,51 @@
 from backend.app.services.crop_service import get_crop_yield_data
-from backend.app.services.weather_service import get_weather_features
-from backend.app.config.locationsAndCrops_config import STATE_COORDS
-from backend.app.config.locationsAndCrops_config import STATES, CROPS
+from backend.app.services.weather_service import get_weather_data
+from backend.app.config.locationsAndCrops_config import (
+    STATE_COORDS,
+    STATES,
+    CROPS
+)
+
 import pandas as pd
 import joblib
+import os
 import time
 
 START_YEAR = 2000
 END_YEAR = 2023
+
+CACHE_FILE = "ml/data/weather_cache.pkl"
 
 
 def build_training_data():
 
     rows = []
 
+    # -----------------------------
+    # LOAD WEATHER CACHE
+    # -----------------------------
+    if os.path.exists(CACHE_FILE):
+        weather_cache = joblib.load(CACHE_FILE)
+        print(f"Loaded {len(weather_cache)} cached weather records")
+    else:
+        weather_cache = {}
+
+    # -----------------------------
+    # BUILD DATASET
+    # -----------------------------
     for crop in CROPS:
         for state in STATES:
 
-            usda = get_crop_yield_data(crop, state, str(START_YEAR))
+            print(f"\nProcessing {crop} - {state}")
+
+            usda = get_crop_yield_data(
+                crop,
+                state,
+                str(START_YEAR)
+            )
 
             if usda is None or isinstance(usda, dict):
+                print("Skipping USDA failure")
                 continue
 
             lat, lon = STATE_COORDS[state]
@@ -31,40 +57,96 @@ def build_training_data():
                 if year < START_YEAR or year > END_YEAR:
                     continue
 
-                weather = get_weather_features(
-                    lat,
-                    lon,
-                    f"{year}-04-01",
-                    f"{year}-09-30"
-                )
+                cache_key = (state, year)
 
-                if weather is None:
-                    continue
+                # -----------------------------
+                # WEATHER CACHE
+                # -----------------------------
+                if cache_key not in weather_cache:
+
+                    print(f"Fetching weather: {state} {year}")
+
+                    weather = get_weather_data(
+                        lat,
+                        lon,
+                        f"{year}-04-01",
+                        f"{year}-09-30"
+                    )
+
+                    if weather is None:
+                        print(f"Weather failed: {state} {year}")
+                        continue
+
+                    weather_cache[cache_key] = weather
+
+                    # save cache immediately
+                    joblib.dump(
+                        weather_cache,
+                        CACHE_FILE
+                    )
+
+                    # be nice to API
+                    time.sleep(0.5)
+
+                weather = weather_cache[cache_key]
 
                 rows.append({
                     "year": year,
                     "state": state,
                     "crop": crop,
+
                     "yield": r["yield"],
+
                     "avg_temp": weather["avg_temp"],
+                    "avg_temp_min": weather["avg_temp_min"],
                     "total_rain": weather["total_rain"],
                     "avg_wind": weather["avg_wind"],
                 })
 
-                time.sleep(0.2)
+    # -----------------------------
+    # CREATE DATAFRAME
+    # -----------------------------
+    df = pd.DataFrame(rows)
 
-    df = pd.DataFrame(rows).dropna()
+    if df.empty:
+        print("No training data generated")
+        return None
 
-    # ONE HOT ENCODING
-    df = pd.get_dummies(df, columns=["state", "crop"])
+    df = df.dropna()
 
-    # SAVE FEATURE COLUMNS (CRITICAL FIX)
-    feature_cols = [c for c in df.columns if c != "yield"]
-    joblib.dump(feature_cols, "ml/models/features.pkl")
+    # -----------------------------
+    # ONE-HOT ENCODE
+    # -----------------------------
+    df = pd.get_dummies(
+        df,
+        columns=["state", "crop"]
+    )
 
-    df.to_csv("ml/data/training_data.csv", index=False)
+    # -----------------------------
+    # SAVE FEATURE LIST
+    # -----------------------------
+    feature_cols = [
+        c for c in df.columns
+        if c != "yield"
+    ]
 
-    print("Training data saved")
+    joblib.dump(
+        feature_cols,
+        "ml/models/features.pkl"
+    )
+
+    # -----------------------------
+    # SAVE DATASET
+    # -----------------------------
+    df.to_csv(
+        "ml/data/training_data.csv",
+        index=False
+    )
+
+    print("\nTraining data saved")
+    print(f"Rows: {len(df)}")
+    print(f"Features: {len(feature_cols)}")
+
     return df
 
 
