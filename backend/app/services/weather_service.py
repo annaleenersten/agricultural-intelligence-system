@@ -4,6 +4,9 @@ import pandas as pd
 def get_weather_data(lat, lon, start_date, end_date):
     url = "https://archive-api.open-meteo.com/v1/archive"
 
+    #-----------------------
+    # API parameters
+    #-----------------------
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -13,6 +16,9 @@ def get_weather_data(lat, lon, start_date, end_date):
         "timezone": "auto"
     }
 
+    #-----------------------
+    # API request
+    #-----------------------
     try:
         response = requests.get(url, params=params, timeout=30)
 
@@ -25,8 +31,14 @@ def get_weather_data(lat, lon, start_date, end_date):
             print("Weather API returned:", data)
             return None
 
+        #-----------------------------
+        # Process data into DataFrame
+        #-----------------------------
         df = pd.DataFrame(data["daily"])
 
+        #----------------------------------------------------------
+        # Create data dictionary with avg temp, total rain, avg wind
+        #----------------------------------------------------------
         return {
             "avg_temp": df["temperature_2m_max"].mean(),
             "avg_temp_min": df["temperature_2m_min"].mean(),

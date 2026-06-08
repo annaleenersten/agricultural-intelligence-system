@@ -85,7 +85,7 @@ def build_training_data():
                         CACHE_FILE
                     )
 
-                    # be nice to API
+                    # let API load
                     time.sleep(0.5)
 
                 weather = weather_cache[cache_key]

@@ -4,19 +4,6 @@ A machine learning application that combines USDA crop yield data and historical
 
 ---
 
-## Project Overview
-
-This project:
-
-* Retrieves crop yield data from the USDA API
-* Retrieves historical weather data from Open-Meteo
-* Combines crop and weather data into a training dataset
-* Trains a machine learning model to predict crop yield
-* Serves predictions through a FastAPI backend
-* Displays results through a React frontend
-
----
-
 ## Data
 
 USDA Crop Data:
@@ -72,22 +59,6 @@ pip install -r requirements.txt
 ---
 
 ## Building the Dataset
-
-### Step 1: Fetch USDA Crop Yield Data
-
-```bash
-python -m ml.data.fetch_usda
-```
-
-Creates:
-
-```text
-ml/data/usda_yield.csv
-```
-
----
-
-### Step 2: Build the Training Dataset
 
 ```bash
 python -m ml.data.build_training_data

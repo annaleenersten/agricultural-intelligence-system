@@ -29,10 +29,13 @@ class YieldRequest(BaseModel):
 @app.post("/predict-yield")
 def predict_yield(data: YieldRequest):
 
-    if data.location not in STATE_COORDS:
+    state = data.location.upper()
+    crop = data.crop.upper()
+
+    if state not in STATE_COORDS:
         raise HTTPException(status_code=400, detail="Invalid state code")
 
-    lat, lon = STATE_COORDS[data.location]
+    lat, lon = STATE_COORDS[state]
 
     weather = get_weather_data(
         lat,
@@ -41,32 +44,36 @@ def predict_yield(data: YieldRequest):
         f"{data.year}-09-30"
     )
 
-    if weather is None:
+    if not weather:
         raise HTTPException(status_code=500, detail="Weather API failed")
 
-    row = {
-        "year": data.year,
-        "avg_temp": weather["avg_temp"],
-        "total_rain": weather["total_rain"],
-        "avg_wind": weather["avg_wind"]
-    }
+    # normalize inputs
+    crop = data.crop.upper()
+    state = data.location.upper()
 
-    # fill all features with 0
-    for col in feature_cols:
-        row[col] = 0
+    # start clean feature dict
+    row = {col: 0 for col in feature_cols}
 
-    # set correct one-hot
-    state_col = f"state_{data.location}"
-    crop_col = f"crop_{data.crop}"
+    # numeric features
+    row["year"] = data.year
+    row["avg_temp"] = weather["avg_temp"]
+    row["total_rain"] = weather["total_rain"]
+    row["avg_wind"] = weather["avg_wind"]
 
-    if state_col in feature_cols:
+    # one-hot features
+    state_col = f"state_{state}"
+    crop_col = f"crop_{crop}"
+
+    if state_col in row:
         row[state_col] = 1
 
-    if crop_col in feature_cols:
+    if crop_col in row:
         row[crop_col] = 1
 
     features = pd.DataFrame([row])[feature_cols]
 
     prediction = model.predict(features)[0]
+
+    print(f"{crop} {state} {data.year} -> {prediction:.2f}")
 
     return {"predicted_yield": float(prediction)}
