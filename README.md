@@ -60,23 +60,30 @@ pip install -r requirements.txt
 
 ## Building the Dataset
 
+
+#### 1. Build Weather Dataset
+
 ```bash
-python -m ml.data.build_training_data
+python -m ml.data.build_weather_data
 ```
-
-This step:
-
-* Loads USDA crop data
-* Retrieves historical weather data
-* Combines weather and crop information
-* Creates the final ML dataset
 
 Creates:
 
 ```text
-ml/data/training_data.csv
+ml/data/weather_data.csv
 ```
 
+#### 2. Build Crop Yield Dataset
+
+```bash
+python -m ml.data.build_yield_data
+```
+
+Creates:
+
+```text
+ml/data/yield_data.csv
+```
 ---
 
 ## Training the Model
@@ -124,6 +131,7 @@ http://127.0.0.1:8000/docs
 ```bash
 cd frontend
 npm install
+npm install recharts
 ```
 
 ### Run Frontend

@@ -93,7 +93,7 @@ export default function YieldPredictor() {
 
       const data = await res.json();
 
-      // 🔐 protect against bad backend responses
+      // protect against bad backend responses
       if (!data || typeof data.predicted_yield !== "number") {
         throw new Error("Invalid prediction response");
       }
@@ -125,7 +125,9 @@ export default function YieldPredictor() {
           name="state"
           value={form.state}
           onChange={handleStateChange}
-          className="w-full px-4 py-3 rounded-xl border bg-gray-50"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+          focus:bg-white focus:outline-none focus:border-emerald-500
+          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
         >
           <option value="">Select State</option>
           {STATES.map((s) => (
@@ -139,7 +141,9 @@ export default function YieldPredictor() {
           value={form.county}
           onChange={handleChange}
           disabled={!form.state || counties.length === 0}
-          className="w-full px-4 py-3 rounded-xl border bg-gray-50"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+          focus:bg-white focus:outline-none focus:border-emerald-500
+          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
         >
           <option value="">Select County</option>
 
@@ -159,7 +163,9 @@ export default function YieldPredictor() {
           name="crop"
           value={form.crop}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-xl border bg-gray-50"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
+          focus:bg-white focus:outline-none focus:border-emerald-500
+          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
         >
           <option value="">Select Crop</option>
           {CROPS.map((crop) => (
