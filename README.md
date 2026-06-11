@@ -91,13 +91,13 @@ ml/data/yield_data.csv
 Train the Random Forest yield prediction model:
 
 ```bash
-python ml/train_yield.py
+python ml/train.py
 ```
 
 Creates:
 
 ```text
-ml/yield_model.pkl
+ml/crop_model.pkl
 ```
 
 ---

@@ -10,4 +10,4 @@ STATES = [
 
 COUNTY_COORDS = joblib.load("ml/models/county_coords.pkl")
 
-CROPS = ["CORN", "WHEAT", "SOYBEANS", "COTTON", "RICE"]
+CROPS = ["CORN", "WHEAT", "SOYBEANS"]
