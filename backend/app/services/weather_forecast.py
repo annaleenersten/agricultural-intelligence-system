@@ -1,22 +1,33 @@
 import requests
 
-def get_forecast(lat, lon):
-    url = "https://api.open-meteo.com/v1/forecast"
+def get_weather_forecast(lat, lon):
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}"
+        f"&longitude={lon}"
+        "&daily=temperature_2m_max,"
+        "temperature_2m_min,"
+        "precipitation_sum,"
+        "wind_speed_10m_max"
+        "&forecast_days=16"
+    )
 
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max",
-        "timezone": "auto"
-    }
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
 
-    res = requests.get(url, params=params)
-    res.raise_for_status()
-    data = res.json()["daily"]
+    data = response.json()
+
+    daily = data["daily"]
 
     return {
-        "avg_temp": sum(data["temperature_2m_max"]) / len(data["temperature_2m_max"]),
-        "avg_temp_min": sum(data["temperature_2m_min"]) / len(data["temperature_2m_min"]),
-        "total_rain": sum(data["precipitation_sum"]),
-        "avg_wind": sum(data["windspeed_10m_max"]) / len(data["windspeed_10m_max"]),
+        "avg_temp":
+            sum(daily["temperature_2m_max"]) /
+            len(daily["temperature_2m_max"]),
+
+        "total_rain":
+            sum(daily["precipitation_sum"]),
+
+        "avg_wind":
+            sum(daily["wind_speed_10m_max"]) /
+            len(daily["wind_speed_10m_max"]),
     }

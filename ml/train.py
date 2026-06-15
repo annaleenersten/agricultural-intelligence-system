@@ -136,8 +136,9 @@ model.fit(X, y)
 # SAVE
 # -----------------------------
 os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+
 joblib.dump(model, MODEL_PATH)
+joblib.dump(X.columns.tolist(), "ml/models/features.pkl")
 
 print("\nModel trained successfully")
 print("Final feature count:", X.shape[1])
-

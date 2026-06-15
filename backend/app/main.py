@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from backend.app.services.weather_forecast import get_weather_forecast
 from pydantic import BaseModel
 import pandas as pd
 import joblib
@@ -42,26 +43,25 @@ def predict_yield(req: YieldRequest):
     county = req.county.upper()
     crop = req.crop.upper()
 
-    # validate county exists
     key = (state, county)
     if key not in COUNTY_COORDS:
         raise HTTPException(status_code=400, detail="Invalid state/county")
 
-    # -------------------------
-    # GET WEATHER FROM CACHE
-    # -------------------------
-    weather_row = weather_df[
-        (weather_df["state"].str.upper() == state) &
-        (weather_df["county"].str.upper() == county)
-    ]
-
-    if weather_row.empty:
-        raise HTTPException(status_code=500, detail="No cached weather data found")
-
-    weather = weather_row.iloc[-1]
+    lat, lon = COUNTY_COORDS[key]
 
     # -------------------------
-    # BUILD MODEL INPUT
+    # WEATHER FORECAST (FOR MODEL)
+    # -------------------------
+    weather = get_weather_forecast(lat, lon)
+
+    if weather is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unable to retrieve weather forecast for {county} County, {state}"
+        )
+
+    # -------------------------
+    # BUILD MODEL INPUT 
     # -------------------------
     row = {col: 0 for col in feature_cols}
 
@@ -71,22 +71,25 @@ def predict_yield(req: YieldRequest):
     row["avg_wind"] = weather["avg_wind"]
 
     state_col = f"state_{state}"
+    county_col = f"county_{county}"
     crop_col = f"crop_{crop}"
 
     if state_col in row:
         row[state_col] = 1
-
+    if county_col in row:
+        row[county_col] = 1
     if crop_col in row:
         row[crop_col] = 1
 
     features = pd.DataFrame([row])[feature_cols]
-
     prediction = model.predict(features)[0]
 
     # -------------------------
-    # HISTORICAL DATA (SAFE)
+    # HISTORICAL YIELD DATA
     # -------------------------
     yield_df = pd.read_csv("ml/data/yield_data.csv")
+
+    print(state, county, crop)
 
     yield_df["state"] = yield_df["state"].str.upper()
     yield_df["county"] = yield_df["county"].str.upper()
@@ -104,10 +107,59 @@ def predict_yield(req: YieldRequest):
         .sort_values("year")
     )
 
+    # -------------------------
+    # HISTORICAL WEATHER
+    # -------------------------
+    hist_weather = weather_df[
+        (weather_df["state"].str.upper() == state) &
+        (weather_df["county"].str.upper() == county)
+    ]
+
+    historical_weather_summary = {
+        "avg_temp": hist_weather["avg_temp"].mean() if not hist_weather.empty else None,
+        "total_rain": hist_weather["total_rain"].mean() if not hist_weather.empty else None,
+        "avg_wind": hist_weather["avg_wind"].mean() if not hist_weather.empty else None,
+    }
+
+    # -------------------------
+    # WEATHER DIFFERENCE 
+    # -------------------------
+    weather_anomaly = None
+    if historical_weather_summary["avg_temp"] is not None:
+        weather_anomaly = {
+            "temp_diff": weather["avg_temp"] - historical_weather_summary["avg_temp"],
+            "rain_diff": weather["total_rain"] - historical_weather_summary["total_rain"],
+            "wind_diff": weather["avg_wind"] - historical_weather_summary["avg_wind"],
+        }
+
+    # -------------------------
+    # FINAL RESPONSE 
+    # -------------------------
+    # return {
+    #     "predicted_yield": float(prediction),
+
+    #     "historical_yield_data": grouped.tail(10).to_dict(orient="records"),
+    #     "historical_yield_avg": float(grouped["yield"].mean()) if not grouped.empty else None,
+
+    #     "forecast_weather": weather,
+    #     "historical_weather": historical_weather_summary,
+    #     "weather_anomaly": weather_anomaly
+    # }
+
     return {
         "predicted_yield": float(prediction),
-        "historical_avg": float(grouped["yield"].mean()) if not grouped.empty else None,
-        "historical_data": grouped.tail(10).to_dict(orient="records")
+
+        # yield history
+        "historical_yield": {
+            "avg": float(grouped["yield"].mean()) if not grouped.empty else None,
+            "data": grouped.tail(10).to_dict(orient="records")
+        },
+
+        # weather comparison
+        "weather": {
+            "forecast": weather,
+            "historical_avg": historical_weather_summary
+        }
     }
 
 

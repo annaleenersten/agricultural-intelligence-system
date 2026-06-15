@@ -29,7 +29,7 @@ def save_cache(cache):
 
 
 # -----------------------------
-# WEATHER FETCH (SAFE)
+# WEATHER FETCH
 # -----------------------------
 def safe_weather(lat, lon, year, cache):
 
@@ -66,7 +66,7 @@ def build_weather_data():
     cache = load_cache()
     rows = []
 
-    # 🚀 CRITICAL FIX: deduplicate first
+    # remove first
     unique = df_yield[["state", "county", "year"]].drop_duplicates()
 
     print(f"Unique weather requests: {len(unique)}")
@@ -101,7 +101,7 @@ def build_weather_data():
             "avg_wind": weather["avg_wind"],
         })
 
-        # light throttle for API safety
+        # for API safety
         time.sleep(0.1)
 
         # periodic cache save

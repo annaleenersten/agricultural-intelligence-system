@@ -184,55 +184,123 @@ export default function YieldPredictor() {
         </button>
       </form>
 
-      {/* RESULTS */}
-      {result && (
-        <div className="space-y-4 mt-6">
+    {/* RESULTS */}
+    {result && (
+      <div className="space-y-4 mt-6">
 
-          {/* PREDICTION */}
-          <div className="p-5 rounded-2xl bg-emerald-50 text-center">
-            <p className="text-sm text-emerald-600">Predicted Yield</p>
-            <p className="text-3xl font-bold mt-1">
-              {result.predicted_yield?.toFixed?.(2) ?? "N/A"}
-            </p>
-          </div>
+        {/* PREDICTION */}
+        <div className="p-5 rounded-2xl bg-emerald-50 text-center shadow-sm hover:shadow-md transition">
+          <p className="text-sm text-emerald-600">Predicted Yield</p>
+          <p className="text-3xl font-bold mt-1">
+            {result.predicted_yield?.toFixed?.(2) ?? "N/A"}
+          </p>
+        </div>
 
-          {/* HISTORICAL AVG */}
-          <div className="p-5 rounded-2xl bg-gray-50 text-center">
-            <p className="text-sm text-gray-600">Historical Average</p>
-            <p className="text-2xl font-semibold mt-1">
-              {result.historical_avg ?? "No data"}
-            </p>
-          </div>
+        {/* HISTORICAL AVG */}
+        <div className="p-5 rounded-2xl bg-gray-50 text-center shadow-sm hover:shadow-md transition">
+          <p className="text-sm text-gray-600">Historical Average</p>
+          <p className="text-2xl font-semibold mt-1">
+            {result.historical_yield?.avg?.toFixed?.(2) ?? "No data"}
+          </p>
+        </div>
 
-          {/* CHART */}
-          {Array.isArray(result.historical_data) &&
-            result.historical_data.length > 0 && (
-              <div className="p-5 rounded-2xl bg-white border">
+        {/* WEATHER COMPARISON */}
+        {result.weather && (
+          
+          <div className="grid grid-cols-2 gap-4">
 
-                <h3 className="font-semibold mb-3">
-                  Recent Yield History
-                </h3>
+            {/* FORECAST */}
+            <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
+              <p className="text-sm text-gray-500 mb-4">Forecast Weather</p>
 
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={result.historical_data}>
-                      <XAxis dataKey="year" />
-                      <YAxis />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="yield"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <div className="space-y-3">
+
+                <div>
+                  <p className="text-xs text-gray-400">Average Temperature</p>
+                  <p className="text-xl font-semibold text-gray-900">
+                    {result.weather.forecast.avg_temp?.toFixed(1)}°C
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-400">Total Rainfall</p>
+                  <p className="text-xl font-semibold text-gray-900">
+                    {result.weather.forecast.total_rain?.toFixed(1)} mm
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-400">Average Wind Speed</p>
+                  <p className="text-xl font-semibold text-gray-900">
+                    {result.weather.forecast.avg_wind?.toFixed(1)} m/s
+                  </p>
                 </div>
 
               </div>
-            )}
-        </div>
-      )}
+            </div>
+
+            {/* HISTORICAL */}
+            <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
+                <p className="text-sm text-gray-500 mb-4">Historical Average</p>
+
+                <div className="space-y-3">
+
+                  <div>
+                    <p className="text-xs text-gray-400">Average Temperature</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {result.weather.historical_avg.avg_temp?.toFixed(1)}°C
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-400">Total Rainfall</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {result.weather.historical_avg.total_rain?.toFixed(1)} mm
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-gray-400">Average Wind Speed</p>
+                    <p className="text-xl font-semibold text-gray-900">
+                      {result.weather.historical_avg.avg_wind?.toFixed(1)} m/s
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+
+          </div>
+          
+        )}
+
+        {/* CHART */}
+        {Array.isArray(result.historical_yield?.data) &&
+          result.historical_yield.data.length > 0 && (
+
+          <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
+            <h3 className="font-semibold mb-3">
+              USDA Yield History (2020–2025)
+            </h3>
+
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={result.historical_yield.data}>
+                  <XAxis dataKey="year" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="yield"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
     </div>
   );
 }
