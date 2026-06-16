@@ -204,6 +204,23 @@ export default function YieldPredictor() {
           </p>
         </div>
 
+
+        {result.profit && (
+          <div className="p-5 rounded-2xl bg-white border shadow-md">
+            <p className="text-sm text-gray-500">Estimated Profit</p>
+
+            <p className="text-3xl font-bold mt-2">
+              ${result.profit.profit_per_acre.toFixed(2)}
+            </p>
+
+            <div className="mt-3 text-sm text-gray-600">
+              <p>Revenue/Acre: ${result.profit.revenue_per_acre.toFixed(2)}</p>
+              <p>Cost/Acre: ${result.profit.cost_per_acre.toFixed(2)}</p>
+              <p>Market Price: ${result.profit.price_per_bushel.toFixed(2)}/bushel</p>
+            </div>
+          </div>
+        )}
+
         {/* WEATHER COMPARISON */}
         {result.weather && (
           
@@ -299,6 +316,8 @@ export default function YieldPredictor() {
             </div>
           </div>
         )}
+
+
       </div>
     )}
     </div>

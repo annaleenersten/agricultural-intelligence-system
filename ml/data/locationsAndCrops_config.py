@@ -11,3 +11,10 @@ STATES = [
 COUNTY_COORDS = joblib.load("ml/models/county_coords.pkl")
 
 CROPS = ["CORN", "WHEAT", "SOYBEANS"]
+
+COST_PER_ACRE = {
+    "CORN": 800,
+    "SOYBEANS": 450,
+    "WHEAT": 350,
+}
+

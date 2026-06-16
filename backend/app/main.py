@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.services.weather_forecast import get_weather_forecast
+from backend.app.services.profit_service import calculate_profit
 from pydantic import BaseModel
 import pandas as pd
 import joblib
@@ -83,6 +84,7 @@ def predict_yield(req: YieldRequest):
 
     features = pd.DataFrame([row])[feature_cols]
     prediction = model.predict(features)[0]
+    profit = calculate_profit(crop, prediction)
 
     # -------------------------
     # HISTORICAL YIELD DATA
@@ -138,6 +140,8 @@ def predict_yield(req: YieldRequest):
 
     return {
         "predicted_yield": float(prediction),
+
+        "profit": profit,
 
         # yield history
         "historical_yield": {

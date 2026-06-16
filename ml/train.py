@@ -7,6 +7,7 @@ import os
 YIELD_PATH = "ml/data/yield_data.csv"
 WEATHER_PATH = "ml/data/weather_data.csv"
 MODEL_PATH = "ml/models/crop_model.pkl"
+PRICE_PATH = "ml/data/price_data.csv"
 
 
 # -----------------------------
@@ -42,9 +43,13 @@ def clean_weather(df):
 # -----------------------------
 yield_df = pd.read_csv(YIELD_PATH)
 weather_df = pd.read_csv(WEATHER_PATH)
+price_df = pd.read_csv(PRICE_PATH)
 
 yield_df = clean_yield(yield_df)
 weather_df = clean_weather(weather_df)
+
+price_df["crop"] = price_df["crop"].astype(str).str.upper().str.strip()
+price_df["year"] = pd.to_numeric(price_df["year"], errors="coerce")
 
 print("Yield rows:", len(yield_df))
 print("Weather rows:", len(weather_df))
@@ -70,6 +75,12 @@ training_df = yield_df.merge(
     how="inner"
 )
 
+training_df = training_df.merge(
+    price_df,
+    on=["crop", "year"],
+    how="left"
+)
+
 print("\nTraining rows:", len(training_df))
 
 if len(training_df) == 0:
@@ -79,6 +90,7 @@ if len(training_df) == 0:
 # -----------------------------
 # FEATURES / TARGET
 # -----------------------------
+training_df = training_df.dropna(subset=["price"])
 X = training_df.drop(columns=["yield"])
 y = training_df["yield"]
 
