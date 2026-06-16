@@ -1,5 +1,9 @@
 export const CROPS = [
   "CORN",
   "WHEAT",
-  "SOYBEANS"
+  "SOYBEANS",
+  "COTTON", 
+  "RICE", 
+  "BARLEY", 
+  "OATS"
 ];
