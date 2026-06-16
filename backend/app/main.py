@@ -23,7 +23,7 @@ model = joblib.load("ml/models/crop_model.pkl")
 feature_cols = joblib.load("ml/models/features.pkl")
 COUNTY_COORDS = joblib.load("ml/models/county_coords.pkl")
 
-# CACHED WEATHER (NO API CALLS)
+# CACHED WEATHER 
 weather_df = pd.read_csv("ml/data/weather_data.csv")
 
 
@@ -135,16 +135,6 @@ def predict_yield(req: YieldRequest):
     # -------------------------
     # FINAL RESPONSE 
     # -------------------------
-    # return {
-    #     "predicted_yield": float(prediction),
-
-    #     "historical_yield_data": grouped.tail(10).to_dict(orient="records"),
-    #     "historical_yield_avg": float(grouped["yield"].mean()) if not grouped.empty else None,
-
-    #     "forecast_weather": weather,
-    #     "historical_weather": historical_weather_summary,
-    #     "weather_anomaly": weather_anomaly
-    # }
 
     return {
         "predicted_yield": float(prediction),

@@ -1,6 +1,6 @@
 # Crop Profit Forecasting System
 
-A machine learning application that combines USDA crop yield data and historical weather data to predict crop yields and support future crop profitability analysis.
+A machine learning application that combines USDA crop yield data with historical and forecasted weather data to predict crop yields and support agricultural decision-making and profitability analysis.
 
 ---
 
