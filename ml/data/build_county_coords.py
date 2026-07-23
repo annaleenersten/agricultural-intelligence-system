@@ -2,7 +2,7 @@ import pandas as pd
 import joblib
 
 df = pd.read_csv(
-    "backend/app/data/2025_Gaz_counties_national.txt",
+    "ml/data/raw/2025_Gaz_counties_national.txt",
     sep="|"
 )
 

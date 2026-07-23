@@ -1,9 +1,12 @@
 export const CROPS = [
   "CORN",
-  "WHEAT",
   "SOYBEANS",
-  "COTTON", 
-  "RICE", 
-  "BARLEY", 
-  "OATS"
+  "WHEAT",
+  "COTTON",
+  "RICE",
+  "BARLEY",
+  "SORGHUM",
+  "OATS",
+  "POTATOES",
+  "APPLES"
 ];

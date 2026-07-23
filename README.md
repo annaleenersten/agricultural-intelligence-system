@@ -53,7 +53,7 @@ venv\Scripts\Activate.ps1
 ### 3. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 ---
@@ -61,16 +61,16 @@ pip install -r requirements.txt
 ## Building the Dataset
 
 
-#### 1. Build Weather Dataset
+#### 1. Build County Coordinate Dataset
 
 ```bash
-python -m ml.data.build_weather_data
+python -m ml.data.build_county_coords
 ```
 
 Creates:
 
 ```text
-ml/data/weather_data.csv
+ml/models/county_coords.pkl
 ```
 
 #### 2. Build Crop Yield Dataset
@@ -82,7 +82,31 @@ python -m ml.data.build_yield_data
 Creates:
 
 ```text
-ml/data/yield_data.csv
+ml/data/processed/yield_data.csv
+```
+
+#### 3. Build Weather Dataset
+
+```bash
+python -m ml.data.build_weather_data
+```
+
+Creates:
+
+```text
+ml/data/processed/weather_data.csv
+```
+
+#### 4. Build Training Dataset
+
+```bash
+python -m ml.data.build_training_data
+```
+
+Creates:
+
+```text
+ml/data/processed/training_data.csv
 ```
 ---
 
