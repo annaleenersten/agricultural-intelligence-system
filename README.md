@@ -97,7 +97,19 @@ Creates:
 ml/data/processed/weather_data.csv
 ```
 
-#### 4. Build Training Dataset
+#### 4. Build Price Dataset
+
+```bash
+python -m ml.data.build_price_data
+```
+
+Creates:
+
+```text
+ml/data/processed/price_data.csv
+```
+
+#### 5. Build Training Dataset
 
 ```bash
 python -m ml.data.build_training_data

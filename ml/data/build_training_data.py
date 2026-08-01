@@ -16,7 +16,7 @@ WEATHER_FILE = (
 )
 
 PRICE_FILE = (
-    "ml/data/price_data.csv"
+    "ml/data/processed/price_data.csv"
 )
 
 

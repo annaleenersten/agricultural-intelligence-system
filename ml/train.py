@@ -30,7 +30,12 @@ y = df["yield"]
 # FEATURES
 # -----------------------------
 
-X = df.drop(columns=["yield"])
+X = df.drop(
+    columns=[
+        "yield",
+        "yield_change"
+    ]
+)
 
 
 categorical = [
