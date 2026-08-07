@@ -26,7 +26,6 @@ app.add_middleware(
 )
 
 
-
 def clean_json(data):
 
     import numpy as np
@@ -49,6 +48,9 @@ def clean_json(data):
 
     elif isinstance(data, pd.DataFrame):
         return clean_json(data.to_dict(orient="records"))
+
+    elif pd.isna(data):
+        return None
 
     elif isinstance(data, (np.integer, np.floating)):
         return data.item()
@@ -209,6 +211,7 @@ def predict_yield(req: YieldRequest):
 
         historical_avg_temp = 0
         historical_avg_rain = 0
+        historical_avg_wind = 0
 
     else:
 
@@ -222,6 +225,11 @@ def predict_yield(req: YieldRequest):
             hist_weather["total_rain"]
             .mean()
         )
+
+        historical_avg_wind = (
+            hist_weather["avg_wind"]
+            .mean()
+    )
 
 
 
@@ -444,7 +452,9 @@ def predict_yield(req: YieldRequest):
 
             "temperature": historical_avg_temp,
 
-            "rain": historical_avg_rain
+            "rain": historical_avg_rain,
+
+            "wind": historical_avg_wind
         },
 
         "difference": {
@@ -456,12 +466,7 @@ def predict_yield(req: YieldRequest):
     },
 
 
-    "historical_yield": {
-
-        "previous_year": float(previous_year_yield),
-
-        "five_year_average": float(five_year_avg_yield)
-    }
+    "historical_yield": hist_yield
 
     }
 

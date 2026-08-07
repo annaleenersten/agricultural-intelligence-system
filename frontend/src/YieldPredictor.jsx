@@ -11,7 +11,9 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+
 export default function YieldPredictor() {
+
   const [form, setForm] = useState({
     state: "",
     county: "",
@@ -23,15 +25,23 @@ export default function YieldPredictor() {
   const [counties, setCounties] = useState([]);
   const [error, setError] = useState(null);
 
+
+
   function handleChange(e) {
+
     setForm({
       ...form,
       [e.target.name]: e.target.value,
     });
+
   }
 
+
+
   async function handleStateChange(e) {
+
     const state = e.target.value;
+
 
     setForm({
       ...form,
@@ -39,287 +49,771 @@ export default function YieldPredictor() {
       county: "",
     });
 
+
     setError(null);
     setCounties([]);
 
+
     if (!state) return;
 
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/counties/${state}`);
 
-      if (!res.ok) throw new Error("Failed to load counties");
+
+    try {
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/counties/${state}`
+      );
+
+
+      if (!res.ok) {
+        throw new Error("Failed to load counties");
+      }
+
 
       const data = await res.json();
 
-      if (!data?.counties || !Array.isArray(data.counties)) {
-        setCounties([]);
-        return;
-      }
 
-      setCounties(data.counties);
-    } catch (err) {
+      setCounties(
+        data.counties || []
+      );
+
+
+    } catch(err) {
+
       console.error(err);
-      setError("Could not load counties");
+
+      setError(
+        "Could not load counties"
+      );
+
     }
+
   }
 
+
+
+
   async function handleSubmit(e) {
+
     e.preventDefault();
+
     setError(null);
 
-    if (!form.state || !form.county || !form.crop) {
-      setError("Please fill all fields");
+
+
+    if (
+      !form.state ||
+      !form.county ||
+      !form.crop
+    ) {
+
+      setError(
+        "Please fill all fields"
+      );
+
       return;
+
     }
+
+
 
     setLoading(true);
     setResult(null);
 
-    try {
-      const res = await fetch("http://127.0.0.1:8000/predict-yield", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          state: form.state.toUpperCase(),
-          county: form.county.toUpperCase(),
-          crop: form.crop.toUpperCase(),
-        }),
-      });
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Prediction failed");
-      }
+
+    try {
+
+
+      const res = await fetch(
+        "http://127.0.0.1:8000/predict-yield",
+        {
+
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+
+          body: JSON.stringify({
+
+            state:
+              form.state.toUpperCase(),
+
+            county:
+              form.county.toUpperCase(),
+
+            crop:
+              form.crop.toUpperCase(),
+
+          }),
+
+        }
+      );
+
+
 
       const data = await res.json();
 
-      // protect against bad backend responses
-      if (!data || typeof data.predicted_yield !== "number") {
-        throw new Error("Invalid prediction response");
+
+
+      if (!res.ok) {
+
+        throw new Error(
+          data.detail || "Prediction failed"
+        );
+
       }
 
+
+
       setResult(data);
-    } catch (err) {
+
+
+
+    } catch(err) {
+
       console.error(err);
-      setError(err.message || "Error fetching prediction");
+
+      setError(
+        err.message ||
+        "Error fetching prediction"
+      );
+
     }
 
+
+
     setLoading(false);
+
   }
 
+
+
+
+
   return (
+
     <div className="space-y-6">
 
-      {/* ERROR DISPLAY */}
+
+
       {error && (
-        <div className="p-3 rounded bg-red-50 text-red-600 border border-red-200">
+
+        <div className="
+          p-3 rounded
+          bg-red-50
+          text-red-600
+          border border-red-200
+        ">
+
           {error}
+
         </div>
+
       )}
 
-      {/* FORM */}
-      <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* STATE */}
+
+
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+      >
+
+
+
         <select
+
           name="state"
+
           value={form.state}
+
           onChange={handleStateChange}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-          focus:bg-white focus:outline-none focus:border-emerald-500
-          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
+
+          className="
+          w-full px-4 py-3 rounded-xl
+          border border-gray-200
+          bg-gray-50
+          focus:bg-white
+          focus:outline-none
+          focus:border-emerald-500
+          focus:ring-4
+          focus:ring-emerald-100
+          transition shadow-sm
+          "
+
         >
-          <option value="">Select State</option>
-          {STATES.map((s) => (
-            <option key={s} value={s}>{s}</option>
+
+          <option value="">
+            Select State
+          </option>
+
+
+          {STATES.map((s)=>(
+
+            <option
+              key={s}
+              value={s}
+            >
+              {s}
+            </option>
+
           ))}
+
+
         </select>
 
-        {/* COUNTY */}
+
+
+
+
         <select
+
           name="county"
-          value={form.county}
-          onChange={handleChange}
-          disabled={!form.state || counties.length === 0}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-          focus:bg-white focus:outline-none focus:border-emerald-500
-          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
-        >
-          <option value="">Select County</option>
 
-          {counties.length === 0 ? (
-            <option disabled>No counties available</option>
-          ) : (
-            counties.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))
-          )}
+          value={form.county}
+
+          onChange={handleChange}
+
+          disabled={
+            !form.state ||
+            counties.length === 0
+          }
+
+          className="
+          w-full px-4 py-3 rounded-xl
+          border border-gray-200
+          bg-gray-50
+          focus:bg-white
+          focus:outline-none
+          focus:border-emerald-500
+          focus:ring-4
+          focus:ring-emerald-100
+          transition shadow-sm
+          "
+
+        >
+
+          <option value="">
+            Select County
+          </option>
+
+
+          {counties.map((c)=>(
+
+            <option
+              key={c}
+              value={c}
+            >
+              {c}
+            </option>
+
+          ))}
+
+
         </select>
 
-        {/* CROP */}
+
+
+
+
         <select
+
           name="crop"
+
           value={form.crop}
+
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50
-          focus:bg-white focus:outline-none focus:border-emerald-500
-          focus:ring-4 focus:ring-emerald-100 transition shadow-sm"
+
+
+          className="
+          w-full px-4 py-3 rounded-xl
+          border border-gray-200
+          bg-gray-50
+          focus:bg-white
+          focus:outline-none
+          focus:border-emerald-500
+          focus:ring-4
+          focus:ring-emerald-100
+          transition shadow-sm
+          "
+
         >
-          <option value="">Select Crop</option>
-          {CROPS.map((crop) => (
-            <option key={crop} value={crop}>
+
+
+          <option value="">
+            Select Crop
+          </option>
+
+
+
+          {CROPS.map((crop)=>(
+
+            <option
+              key={crop}
+              value={crop}
+            >
               {crop}
             </option>
+
           ))}
+
+
         </select>
 
+
+
+
         <button
+
           type="submit"
+
           disabled={loading}
-          className="w-full py-3 rounded-xl bg-emerald-500 text-white"
+
+          className="
+          w-full py-3
+          rounded-xl
+          bg-emerald-500
+          text-white
+          "
+
         >
-          {loading ? "Analyzing..." : "Predict Yield"}
+
+          {
+            loading
+            ? "Analyzing..."
+            : "Predict Yield"
+          }
+
         </button>
+
+
+
       </form>
 
-    {/* RESULTS */}
-    {result && (
-      <div className="space-y-4 mt-6">
-
-        {/* PREDICTION */}
-        <div className="p-5 rounded-2xl bg-emerald-50 text-center shadow-sm hover:shadow-md transition">
-          <p className="text-sm text-emerald-600">Predicted Yield</p>
-          <p className="text-3xl font-bold mt-1">
-            {result.predicted_yield?.toFixed?.(2) ?? "N/A"}
-          </p>
-        </div>
-
-        {/* HISTORICAL AVG */}
-        <div className="p-5 rounded-2xl bg-gray-50 text-center shadow-sm hover:shadow-md transition">
-          <p className="text-sm text-gray-600">Historical Average</p>
-          <p className="text-2xl font-semibold mt-1">
-            {result.historical_yield?.avg?.toFixed?.(2) ?? "No data"}
-          </p>
-        </div>
 
 
-        {result.profit && (
-          <div className="p-5 rounded-2xl bg-white border shadow-md">
-            <p className="text-sm text-gray-500">Estimated Profit</p>
 
-            <p className="text-3xl font-bold mt-2">
-              ${result.profit.profit_per_acre.toFixed(2)}
+      {result && (
+
+        <div className="space-y-4 mt-6">
+
+
+          <div className="
+            p-5
+            rounded-2xl
+            bg-emerald-50
+            text-center
+            shadow-sm
+          ">
+
+            <p className="text-sm text-emerald-600">
+              Predicted Yield
             </p>
 
-            <div className="mt-3 text-sm text-gray-600">
-              <p>Revenue/Acre: ${result.profit.revenue_per_acre.toFixed(2)}</p>
-              <p>Cost/Acre: ${result.profit.cost_per_acre.toFixed(2)}</p>
-              <p>Market Price: ${result.profit.price_per_bushel.toFixed(2)}/bushel</p>
-            </div>
+
+            <p className="text-3xl font-bold mt-1">
+
+              {
+                result.predicted_yield.toFixed(2)
+              }
+
+            </p>
+
           </div>
-        )}
 
-        {/* WEATHER COMPARISON */}
-        {result.weather && (
-          
-          <div className="grid grid-cols-2 gap-4">
 
-            {/* FORECAST */}
-            <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
-              <p className="text-sm text-gray-500 mb-4">Forecast Weather</p>
+          <div className="
+            p-5
+            rounded-2xl
+            bg-gray-50
+            text-center
+            shadow-sm
+          ">
 
-              <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              Historical Average
+            </p>
 
-                <div>
-                  <p className="text-xs text-gray-400">Average Temperature</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {result.weather.forecast.avg_temp?.toFixed(1)}°C
-                  </p>
-                </div>
 
-                <div>
-                  <p className="text-xs text-gray-400">Total Rainfall</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {result.weather.forecast.total_rain?.toFixed(1)} mm
-                  </p>
-                </div>
+            <p className="text-2xl font-semibold mt-1">
 
-                <div>
-                  <p className="text-xs text-gray-400">Average Wind Speed</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {result.weather.forecast.avg_wind?.toFixed(1)} m/s
-                  </p>
-                </div>
+              {
+                result.historical_yield?.length > 0
+                ? result.historical_yield[
+                    result.historical_yield.length - 1
+                  ].five_year_avg_yield?.toFixed(2)
+                  ?? "No data"
+                : "No data"
+              }
+
+            </p>
+
+          </div>
+
+
+
+
+
+          {result.profit && (
+
+            <div className="
+              p-5
+              rounded-2xl
+              bg-white
+              border
+              shadow-md
+            ">
+
+
+              <p className="text-sm text-gray-500">
+                Estimated Profit
+              </p>
+
+
+              <p className="text-3xl font-bold mt-2">
+
+                $
+                {
+                  result.profit.profit_per_acre.toFixed(2)
+                }
+
+              </p>
+
+
+
+              <div className="
+                mt-3
+                text-sm
+                text-gray-600
+              ">
+
+
+                <p>
+                  Revenue/Acre:
+                  $
+                  {
+                    result.profit.revenue_per_acre.toFixed(2)
+                  }
+                </p>
+
+
+                <p>
+                  Cost/Acre:
+                  $
+                  {
+                    result.profit.cost_per_acre.toFixed(2)
+                  }
+                </p>
+
+
+                <p>
+                  Market Price:
+                  $
+                  {
+                    result.profit.price_per_unit.toFixed(2)
+                  }
+                  /bushel
+                </p>
+
 
               </div>
+
+
             </div>
 
-            {/* HISTORICAL */}
-            <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
-                <p className="text-sm text-gray-500 mb-4">Historical Average</p>
+          )}
+
+
+
+
+
+
+          {result.weather && (
+
+            <div className="grid grid-cols-2 gap-4">
+
+
+
+              <div className="
+                p-5
+                rounded-2xl
+                bg-white
+                border
+                shadow-md
+              ">
+
+
+                <p className="text-sm text-gray-500 mb-4">
+                  Forecast Weather
+                </p>
+
 
                 <div className="space-y-3">
 
-                  <div>
-                    <p className="text-xs text-gray-400">Average Temperature</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {result.weather.historical_avg.avg_temp?.toFixed(1)}°C
-                    </p>
-                  </div>
 
                   <div>
-                    <p className="text-xs text-gray-400">Total Rainfall</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {result.weather.historical_avg.total_rain?.toFixed(1)} mm
+
+                    <p className="text-xs text-gray-400">
+                      Average Temperature
                     </p>
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.forecast.avg_temp.toFixed(1)
+                      }
+                      °C
+
+                    </p>
+
                   </div>
 
+
+
+
                   <div>
-                    <p className="text-xs text-gray-400">Average Wind Speed</p>
-                    <p className="text-xl font-semibold text-gray-900">
-                      {result.weather.historical_avg.avg_wind?.toFixed(1)} m/s
+
+                    <p className="text-xs text-gray-400">
+                      Total Rainfall
                     </p>
+
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.forecast.total_rain.toFixed(1)
+                      }
+                      mm
+
+                    </p>
+
+
                   </div>
+
+
+
+
+
+                  <div>
+
+                    <p className="text-xs text-gray-400">
+                      Average Wind
+                    </p>
+
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.forecast.avg_wind.toFixed(1)
+                      }
+                      m/s
+
+                    </p>
+
+
+                  </div>
+
 
                 </div>
+
+
               </div>
 
-          </div>
-          
-        )}
 
-        {/* CHART */}
-        {Array.isArray(result.historical_yield?.data) &&
-          result.historical_yield.data.length > 0 && (
 
-          <div className="p-5 rounded-2xl bg-white border shadow-md hover:shadow-lg transition">
-            <h3 className="font-semibold mb-3">
-              USDA Yield History (2020–2025)
-            </h3>
 
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={result.historical_yield.data}>
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="yield"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+
+
+              <div className="
+                p-5
+                rounded-2xl
+                bg-white
+                border
+                shadow-md
+              ">
+
+
+                <p className="text-sm text-gray-500 mb-4">
+                  Historical Weather
+                </p>
+
+
+                <div className="space-y-3">
+
+
+                  <div>
+
+                    <p className="text-xs text-gray-400">
+                      Average Temperature
+                    </p>
+
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.historical_average.temperature.toFixed(1)
+                      }
+                      °C
+
+                    </p>
+
+
+                  </div>
+
+
+
+
+
+                  <div>
+
+                    <p className="text-xs text-gray-400">
+                      Total Rainfall
+                    </p>
+
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.historical_average.rain.toFixed(1)
+                      }
+                      mm
+
+                    </p>
+
+
+                  </div>
+
+
+                  <div>
+
+                    <p className="text-xs text-gray-400">
+                      Average Wind
+                    </p>
+
+                    <p className="text-xl font-semibold">
+
+                      {
+                        result.weather.historical_average.wind?.toFixed(1)
+                      }
+                      m/s
+
+                    </p>
+
+                  </div>
+
+
+                </div>
+
+
+              </div>
+
+
             </div>
-          </div>
-        )}
+
+          )}
 
 
-      </div>
-    )}
+
+
+
+
+
+          {
+            Array.isArray(result.historical_yield) &&
+            result.historical_yield.length > 0 &&
+            (
+
+            <div className="
+              p-5
+              rounded-2xl
+              bg-white
+              border
+              shadow-md
+            ">
+
+
+              <h3 className="font-semibold mb-3">
+
+                USDA Yield History (2010–2025)
+
+              </h3>
+
+
+
+
+              <div className="h-64 w-full">
+
+
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+
+
+                  <LineChart
+                    data={result.historical_yield}
+                  >
+
+
+                    <XAxis
+                      dataKey="year"
+                    />
+
+
+                    <YAxis />
+
+
+                    <Tooltip />
+
+
+
+                    <Line
+
+                      type="monotone"
+
+                      dataKey="yield"
+
+                      stroke="#10b981"
+
+                      strokeWidth={2}
+
+                    />
+
+
+                  </LineChart>
+
+
+                </ResponsiveContainer>
+
+
+              </div>
+
+
+
+            </div>
+
+
+            )
+
+          }
+
+
+
+
+
+        </div>
+
+
+      )}
+
+
+
     </div>
+
+
   );
+
 }
