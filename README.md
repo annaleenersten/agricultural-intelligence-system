@@ -2,6 +2,15 @@
 
 A machine learning application that combines USDA crop yield data with historical and forecasted weather data to predict crop yields and support agricultural decision-making and profitability analysis.
 
+## Features
+* Location- and crop-specific yield prediction
+* Historical crop yield and weather data analysis
+* Current and forecasted weather integration
+* Current market price data for profitability analysis
+* Random Forest regression for crop yield prediction
+* FastAPI backend for processing predictions and data
+* React frontend for interacting with predictions and results
+
 ---
 
 ## Data
