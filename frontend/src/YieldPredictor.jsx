@@ -442,13 +442,13 @@ export default function YieldPredictor() {
                 </div>
                 {profit && (
                   <span className="section-caption">
-                    Price defaults from {profit.price_year} USDA data
+                    {profit.price_source} · {profit.cost_source}
                   </span>
                 )}
               </div>
               <div className="scenario-inputs">
                 <label className="scenario-field">
-                  <span>Crop price <small>$/bu</small></span>
+                  <span>Crop price <small>{profit?.price_unit || "per unit"}</small></span>
                   <input
                     type="number"
                     min="0"
@@ -458,7 +458,7 @@ export default function YieldPredictor() {
                       ...current,
                       price: event.target.value,
                     }))}
-                    aria-label="Crop price per bushel"
+                    aria-label={`Crop price ${profit?.price_unit || "per unit"}`}
                   />
                 </label>
                 <label className="scenario-field">
@@ -493,7 +493,7 @@ export default function YieldPredictor() {
               {validScenario ? (
                 <div className="scenario-results">
                   <div className="scenario-total">
-                    <span>Estimated whole-farm profit</span>
+                    <span>Estimated whole-farm profit after operating costs</span>
                     <strong>${formatNumber(scenarioProfit, 2)}</strong>
                     <small>${formatNumber(scenarioProfitPerAcre, 2)} per acre</small>
                   </div>
@@ -509,13 +509,15 @@ export default function YieldPredictor() {
                 </p>
               )}
               <p className="scenario-note">
-                Adjust these assumptions to match your operation. Estimates exclude
-                any costs not included in the growing-cost input.
+                This is an operating-margin estimate, not net profit. USDA operating
+                costs exclude allocated overhead such as land, machinery, and unpaid
+                labor. Adjust assumptions to match your farm.
               </p>
               {profit && (
                 <p className="profit-source-note">
-                  Starting assumptions: ${formatNumber(profit.price_per_unit, 2)} / bu crop price
-                  and ${formatNumber(profit.cost_per_acre, 2)} / acre growing cost.
+                  Defaults: ${formatNumber(profit.price_per_unit, 2)} {profit.price_unit} for {profit.price_year},
+                  and ${formatNumber(profit.cost_per_acre, 2)} / acre from {profit.cost_source}.
+                  Price is state-level when USDA data is available; cost projections are U.S.-level.
                 </p>
               )}
             </section>

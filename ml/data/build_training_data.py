@@ -6,6 +6,8 @@
 import pandas as pd
 import os
 
+from ml.data.raw_data_enrichment import load_raw_yield_enrichment
+
 
 YIELD_FILE = (
     "ml/data/processed/yield_data.csv"
@@ -80,6 +82,14 @@ def build_training_data():
     )
 
 
+
+    raw_yield = load_raw_yield_enrichment()
+
+    if not raw_yield.empty:
+        yield_df = pd.concat(
+            [yield_df, raw_yield.rename(columns={"yield": "yield"})],
+            ignore_index=True,
+        )
 
     yield_df = clean_strings(
         yield_df
@@ -198,25 +208,18 @@ def build_training_data():
 
 
 
-    # Fill missing prices
-    # (some crops may not have yearly prices)
-
+    # Fill missing prices with crop-level history when available, and otherwise a conservative fallback.
     df["price"] = (
         df.groupby("crop")["price"]
         .transform(
-            lambda x:
-            x.fillna(
-                x.mean()
-            )
+            lambda x: x.fillna(x.mean()) if x.notna().any() else x
         )
     )
 
-
+    df["price"] = df["price"].fillna(0)
 
     # Remove remaining missing rows
-
-    df = df.dropna()
-
+    df = df.dropna(subset=["yield", "price"]) 
 
 
     # -----------------------------

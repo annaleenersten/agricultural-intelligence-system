@@ -19,7 +19,7 @@ PRICE_UNITS = {
 }
 
 
-def get_crop_price(crop, start_year="2010"):
+def get_crop_price(crop, start_year="2010", state=None):
 
     crop = crop.upper()
 
@@ -37,6 +37,10 @@ def get_crop_price(crop, start_year="2010"):
         "year__GE": start_year,
         "format": "JSON"
     }
+
+    if state:
+        params["state_alpha"] = state.upper()
+        params["agg_level_desc"] = "STATE"
 
     try:
 

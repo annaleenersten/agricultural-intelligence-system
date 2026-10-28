@@ -12,6 +12,7 @@ import os
 
 from backend.app.services.crop_service import get_crop_yield_data
 from ml.data.locationsAndCrops_config import STATES, CROPS
+from ml.data.raw_data_enrichment import load_raw_yield_enrichment
 
 
 OUTPUT_FILE = "ml/data/processed/yield_data.csv"
@@ -132,6 +133,11 @@ def build_yield_data():
         .str.strip()
     )
 
+
+    raw_yield = load_raw_yield_enrichment()
+    if not raw_yield.empty:
+        df = pd.concat([df, raw_yield], ignore_index=True)
+        df = df.drop_duplicates(subset=["state", "county", "crop", "year"], keep="last")
 
     df = add_yield_history(df)
 

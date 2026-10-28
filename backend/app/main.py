@@ -437,7 +437,8 @@ def predict_yield(req: YieldRequest):
 
     profit = calculate_profit(
         crop,
-        prediction
+        prediction,
+        state=state
     )
 
 
