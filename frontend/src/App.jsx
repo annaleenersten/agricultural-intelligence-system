@@ -25,7 +25,7 @@ export default function App() {
               <span className="live-dot" />
               YIELD & WEATHER OUTLOOK
             </div>
-            <h1>Crop forecasts<br /><span>rooted in your data.</span></h1>
+            <h1>Crop forecasts<br /><span>using local data.</span></h1>
             <p>
               Explore county-level crop forecasts grounded in USDA yield history
               and local weather data.

@@ -9,6 +9,8 @@ A machine learning application that combines USDA crop yield data with historica
 * Historical crop yield and weather data analysis
 * Current and forecasted weather integration
 * Current market price data for profitability analysis
+* Editable farm-size, price, and cost scenarios with per-acre and whole-farm estimates
+* Yield forecast comparisons against recent annual county averages and historical range
 * Random Forest regression for crop yield prediction
 * FastAPI backend for processing predictions and data
 * React frontend for interacting with predictions and results
@@ -20,6 +22,15 @@ https://quickstats.nass.usda.gov/
 
 Weather Data:
 https://open-meteo.com/
+
+
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/images/main.png)
+
+### Forecast
+![Forecast](docs/images/forecast.png)
 
 ---
 

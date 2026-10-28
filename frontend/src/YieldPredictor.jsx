@@ -71,6 +71,11 @@ export default function YieldPredictor() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [scenario, setScenario] = useState({
+    price: "",
+    cost: "",
+    acres: "100",
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -161,6 +166,15 @@ export default function YieldPredictor() {
         throw new Error("The service returned a prediction that could not be displayed.");
       }
       setResult(data);
+      setScenario({
+        price: data.profit?.price_per_unit == null
+          ? ""
+          : Number(data.profit.price_per_unit).toFixed(2),
+        cost: data.profit?.cost_per_acre == null
+          ? ""
+          : String(data.profit.cost_per_acre),
+        acres: "100",
+      });
     } catch (requestError) {
       setError(requestError.message || "Unable to generate a forecast.");
     } finally {
@@ -170,24 +184,88 @@ export default function YieldPredictor() {
 
   const history = Array.isArray(result?.historical_yield)
     ? [...result.historical_yield]
-        .filter((row) => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.yield)))
+        .filter((row) => (
+          row.year !== null
+          && row.year !== undefined
+          && row.yield !== null
+          && row.yield !== undefined
+          && row.year !== ""
+          && row.yield !== ""
+          && Number.isFinite(Number(row.year))
+          && Number.isFinite(Number(row.yield))
+        ))
         .sort((a, b) => Number(a.year) - Number(b.year))
     : [];
-  const latestHistory = history.at(-1);
+  const annualHistory = Object.values(history.reduce((years, row) => {
+    const year = Number(row.year);
+    if (!years[year]) {
+      years[year] = { year, total: 0, count: 0 };
+    }
+    years[year].total += Number(row.yield);
+    years[year].count += 1;
+    return years;
+  }, {}))
+    .map(({ year, total, count }) => ({
+      year,
+      yield: total / count,
+    }))
+    .sort((a, b) => a.year - b.year);
+  const recentHistory = annualHistory.slice(-5);
+  const recentAverage = recentHistory.length
+    ? recentHistory.reduce((total, row) => total + row.yield, 0) / recentHistory.length
+    : null;
+  const lowestHistoricalYield = annualHistory.length
+    ? Math.min(...annualHistory.map((row) => row.yield))
+    : null;
+  const highestHistoricalYield = annualHistory.length
+    ? Math.max(...annualHistory.map((row) => row.yield))
+    : null;
+  const predictedYield = Number(result?.predicted_yield);
+  const yieldDifference = recentAverage === null
+    ? null
+    : predictedYield - recentAverage;
+  const yieldDifferencePercent = recentAverage
+    ? (yieldDifference / recentAverage) * 100
+    : null;
   const weather = result?.weather;
   const forecast = weather?.forecast || {};
   const historicalWeather = weather?.historical_average || {};
   const profit = result?.profit;
+  const pricePerUnit = scenario.price === "" ? null : Number(scenario.price);
+  const costPerAcre = scenario.cost === "" ? null : Number(scenario.cost);
+  const farmAcres = scenario.acres === "" ? null : Number(scenario.acres);
+  const validScenario = (
+    Number.isFinite(pricePerUnit)
+    && pricePerUnit >= 0
+    && Number.isFinite(costPerAcre)
+    && costPerAcre >= 0
+    && Number.isFinite(farmAcres)
+    && farmAcres > 0
+  );
+  const scenarioRevenuePerAcre = validScenario
+    ? predictedYield * pricePerUnit
+    : null;
+  const scenarioProfitPerAcre = validScenario
+    ? scenarioRevenuePerAcre - costPerAcre
+    : null;
+  const scenarioRevenue = validScenario
+    ? scenarioRevenuePerAcre * farmAcres
+    : null;
+  const scenarioCost = validScenario
+    ? costPerAcre * farmAcres
+    : null;
+  const scenarioProfit = validScenario
+    ? scenarioProfitPerAcre * farmAcres
+    : null;
 
   return (
-    <div className="forecast-layout">
+    <div className={`forecast-layout${result ? " forecast-layout-results" : ""}`}>
       <section className="form-panel" aria-labelledby="form-title">
         <div className="panel-heading">
           <div>
             <p className="eyebrow">YOUR FARM</p>
             <h2 id="form-title">Build a forecast</h2>
           </div>
-          <span className="step-indicator">01 / 01</span>
         </div>
 
         <p className="panel-description">
@@ -300,29 +378,150 @@ export default function YieldPredictor() {
                 accent
               />
               <Metric
-                label="Recent 5-year average"
-                value={formatNumber(latestHistory?.five_year_avg_yield, 2)}
+                label={recentHistory.length
+                  ? `Latest ${recentHistory.length} recorded-year avg`
+                  : "Historical average unavailable"}
+                value={formatNumber(recentAverage, 2)}
                 unit=" bu / acre"
               />
-              {profit && (
-                <Metric
-                  label="Estimated profit"
-                  value={`$${formatNumber(profit.profit_per_acre, 2)}`}
-                  unit=" / acre"
-                />
-              )}
             </div>
 
-            {profit && (
-              <div className="profit-details">
-                <span>Revenue <strong>${formatNumber(profit.revenue_per_acre, 2)}</strong></span>
-                <span>Estimated cost <strong>${formatNumber(profit.cost_per_acre, 2)}</strong></span>
-                <span>Market price ({profit.price_year}) <strong>${formatNumber(profit.price_per_unit, 2)} / bu</strong></span>
-              </div>
+            {annualHistory.length > 0 && (
+              <section className="data-section history-comparison">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">HOW IT COMPARES</p>
+                    <h3>Forecast vs. county history</h3>
+                  </div>
+                  <span className="section-caption">
+                    Latest {recentHistory.length} recorded years · {annualHistory.length} total
+                  </span>
+                </div>
+                {yieldDifference !== null && (
+                  <p className={`comparison-summary${yieldDifference >= 0 ? " comparison-positive" : " comparison-negative"}`}>
+                    {yieldDifference === 0
+                      ? "Forecast is in line with the recent average."
+                      : (
+                        <>
+                          Forecast is <strong>{formatNumber(Math.abs(yieldDifference), 2)} bu / acre</strong>
+                          {yieldDifference > 0 ? " above" : " below"} the recent average
+                          {yieldDifferencePercent !== null && (
+                            <> ({formatNumber(Math.abs(yieldDifferencePercent))}%)</>
+                          )}
+                        </>
+                      )}
+                  </p>
+                )}
+                <div className="history-range">
+                  <div className="range-label">
+                    <span>Lowest annual avg</span>
+                    <strong>{formatNumber(lowestHistoricalYield, 2)} bu / acre</strong>
+                  </div>
+                  <div className="range-track" aria-hidden="true">
+                    <span className="range-line" />
+                    <span className="range-marker range-marker-low" />
+                    <span className="range-marker range-marker-high" />
+                  </div>
+                  <div className="range-label range-label-right">
+                    <span>Highest annual avg</span>
+                    <strong>{formatNumber(highestHistoricalYield, 2)} bu / acre</strong>
+                  </div>
+                </div>
+                <p className="history-note">
+                  Historical range uses annual averages from the available USDA records.
+                  The forecast is a model estimate, not a guarantee.
+                </p>
+              </section>
             )}
 
+            <section className="data-section scenario-section">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">PLAN YOUR NUMBERS</p>
+                  <h3>Farm scenario</h3>
+                </div>
+                {profit && (
+                  <span className="section-caption">
+                    Price defaults from {profit.price_year} USDA data
+                  </span>
+                )}
+              </div>
+              <div className="scenario-inputs">
+                <label className="scenario-field">
+                  <span>Crop price <small>$/bu</small></span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={scenario.price}
+                    onChange={(event) => setScenario((current) => ({
+                      ...current,
+                      price: event.target.value,
+                    }))}
+                    aria-label="Crop price per bushel"
+                  />
+                </label>
+                <label className="scenario-field">
+                  <span>Growing cost <small>$/acre</small></span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={scenario.cost}
+                    onChange={(event) => setScenario((current) => ({
+                      ...current,
+                      cost: event.target.value,
+                    }))}
+                    aria-label="Growing cost per acre"
+                  />
+                </label>
+                <label className="scenario-field">
+                  <span>Farm size <small>acres</small></span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="1"
+                    value={scenario.acres}
+                    onChange={(event) => setScenario((current) => ({
+                      ...current,
+                      acres: event.target.value,
+                    }))}
+                    aria-label="Farm size in acres"
+                  />
+                </label>
+              </div>
+              {validScenario ? (
+                <div className="scenario-results">
+                  <div className="scenario-total">
+                    <span>Estimated whole-farm profit</span>
+                    <strong>${formatNumber(scenarioProfit, 2)}</strong>
+                    <small>${formatNumber(scenarioProfitPerAcre, 2)} per acre</small>
+                  </div>
+                  <div className="scenario-breakdown">
+                    <span>Projected revenue<strong>${formatNumber(scenarioRevenue, 2)}</strong></span>
+                    <span>Estimated costs<strong>${formatNumber(scenarioCost, 2)}</strong></span>
+                    <span>Based on<strong>{formatNumber(farmAcres, 0)} acres</strong></span>
+                  </div>
+                </div>
+              ) : (
+                <p className="scenario-note" role="status">
+                  Enter a valid price, cost, and farm size to calculate your scenario.
+                </p>
+              )}
+              <p className="scenario-note">
+                Adjust these assumptions to match your operation. Estimates exclude
+                any costs not included in the growing-cost input.
+              </p>
+              {profit && (
+                <p className="profit-source-note">
+                  Starting assumptions: ${formatNumber(profit.price_per_unit, 2)} / bu crop price
+                  and ${formatNumber(profit.cost_per_acre, 2)} / acre growing cost.
+                </p>
+              )}
+            </section>
+
             {weather && (
-              <section className="data-section">
+              <section className="data-section weather-section">
                 <div className="section-title-row">
                   <div>
                     <p className="eyebrow">LOCAL CONDITIONS</p>
@@ -339,7 +538,7 @@ export default function YieldPredictor() {
               </section>
             )}
 
-            {history.length > 0 && (
+            {annualHistory.length > 0 && (
               <section className="data-section history-section">
                 <div className="section-title-row">
                   <div>
@@ -347,12 +546,12 @@ export default function YieldPredictor() {
                     <h3>Yield history</h3>
                   </div>
                   <span className="section-caption">
-                    {history[0].year}–{history.at(-1).year} · bu / acre
+                    {annualHistory[0].year}–{annualHistory.at(-1).year} · annual avg, bu / acre
                   </span>
                 </div>
                 <div className="chart-wrap">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={history} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
+                    <LineChart data={annualHistory} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
                       <CartesianGrid stroke="#e9eee8" strokeDasharray="4 5" vertical={false} />
                       <XAxis dataKey="year" tickLine={false} axisLine={false} tick={{ fill: "#829087", fontSize: 11 }} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fill: "#829087", fontSize: 11 }} />
