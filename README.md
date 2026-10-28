@@ -32,6 +32,9 @@ https://open-meteo.com/
 ### Forecast
 ![Forecast](docs/images/forecast.png)
 
+### Edit cost, price, and farm size
+![scenario](docs/images/scenario.png)
+
 ---
 
 ## Setup
