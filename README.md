@@ -23,15 +23,6 @@ https://quickstats.nass.usda.gov/
 Weather Data:
 https://open-meteo.com/
 
-### Raw data enrichment
-
-The project keeps the processed datasets as the primary source of truth, then optionally enriches them with the files in `ml/data/raw/` when they fill genuine gaps in yield history or add supplemental context.
-
-- `qs.crops_20261028.txt` can be used to backfill county-level yield history for supported crops.
-- `cop_forecast.csv` is useful for cost assumptions or planning scenarios, but it is not a direct replacement for market price data.
-- Profit scenarios use a USDA state-level crop price when available and a USDA U.S.-level operating-cost projection; the available cost file does not provide county-specific costs or total overhead. Results are operating-margin estimates, not net profit.
-- The raw files should be treated as enrichment layers, not as a full dataset replacement, to avoid mismatched schema or accidental data leakage.
-
 ## Screenshots
 
 ### Dashboard
