@@ -41,7 +41,7 @@ The project keeps the processed datasets as the primary source of truth, then op
 ![Forecast](docs/images/forecast.png)
 
 ### Edit cost, price, and farm size
-<img src="docs/images/scenario.png" alt="Scenario" width="600">
+<img src="docs/images/scenario.png" alt="Scenario" width="500">
 
 ---
 
