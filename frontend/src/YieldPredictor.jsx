@@ -1,819 +1,382 @@
-import { useState } from "react";
-import { STATES } from "./data/states";
-import { CROPS } from "./data/crops";
-
+import { useEffect, useState } from "react";
 import {
-  LineChart,
+  CartesianGrid,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
+import { STATES } from "./data/states";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+
+async function requestApi(path, options) {
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, options);
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw error;
+    }
+    throw new Error(
+      "Can't reach the prediction service. Check that the backend is running.",
+      { cause: error },
+    );
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = typeof data?.detail === "string" ? data.detail : "The request failed.";
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+function formatNumber(value, decimals = 1) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? number.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })
+    : "—";
+}
+
+function Metric({ label, value, unit, accent = false }) {
+  return (
+    <div className={`metric${accent ? " metric-accent" : ""}`}>
+      <p className="metric-label">{label}</p>
+      <p className="metric-value">
+        {value}
+        {unit && <span className="metric-unit">{unit}</span>}
+      </p>
+    </div>
+  );
+}
 
 export default function YieldPredictor() {
-
-  const [form, setForm] = useState({
-    state: "",
-    county: "",
-    crop: "",
-  });
-
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ state: "", county: "", crop: "" });
+  const [crops, setCrops] = useState([]);
   const [counties, setCounties] = useState([]);
-  const [error, setError] = useState(null);
+  const [countiesLoading, setCountiesLoading] = useState(false);
+  const [cropsLoading, setCropsLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
 
+  useEffect(() => {
+    const controller = new AbortController();
 
+    requestApi("/crops", { signal: controller.signal })
+      .then((data) => {
+        if (!Array.isArray(data.crops)) {
+          throw new Error("The prediction service returned an invalid crop list.");
+        }
+        setCrops(data.crops);
+      })
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") {
+          setError(requestError.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCropsLoading(false);
+        }
+      });
 
-  function handleChange(e) {
+    return () => controller.abort();
+  }, []);
 
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-
-  }
-
-
-
-  async function handleStateChange(e) {
-
-    const state = e.target.value;
-
-
-    setForm({
-      ...form,
-      state,
-      county: "",
-    });
-
-
-    setError(null);
-    setCounties([]);
-
-
-    if (!state) return;
-
-
-
-    try {
-
-      const res = await fetch(
-        `http://127.0.0.1:8000/counties/${state}`
-      );
-
-
-      if (!res.ok) {
-        throw new Error("Failed to load counties");
-      }
-
-
-      const data = await res.json();
-
-
-      setCounties(
-        data.counties || []
-      );
-
-
-    } catch(err) {
-
-      console.error(err);
-
-      setError(
-        "Could not load counties"
-      );
-
+  useEffect(() => {
+    if (!form.state) {
+      return undefined;
     }
 
+    const controller = new AbortController();
+
+    requestApi(`/counties/${encodeURIComponent(form.state)}`, {
+      signal: controller.signal,
+    })
+      .then((data) => {
+        if (!Array.isArray(data.counties)) {
+          throw new Error("The prediction service returned an invalid county list.");
+        }
+        setCounties(data.counties);
+      })
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") {
+          setError(requestError.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCountiesLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [form.state]);
+
+  function handleChange(event) {
+    const { name, value } = event.target;
+    if (name === "state") {
+      setForm((current) => ({ ...current, state: value, county: "" }));
+      setCounties([]);
+      setCountiesLoading(Boolean(value));
+    } else {
+      setForm((current) => ({ ...current, [name]: value }));
+    }
+    setResult(null);
+    setError("");
   }
 
-
-
-
-  async function handleSubmit(e) {
-
-    e.preventDefault();
-
-    setError(null);
-
-
-
-    if (
-      !form.state ||
-      !form.county ||
-      !form.crop
-    ) {
-
-      setError(
-        "Please fill all fields"
-      );
-
-      return;
-
-    }
-
-
-
-    setLoading(true);
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
     setResult(null);
 
-
-
-    try {
-
-
-      const res = await fetch(
-        "http://127.0.0.1:8000/predict-yield",
-        {
-
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-
-          body: JSON.stringify({
-
-            state:
-              form.state.toUpperCase(),
-
-            county:
-              form.county.toUpperCase(),
-
-            crop:
-              form.crop.toUpperCase(),
-
-          }),
-
-        }
-      );
-
-
-
-      const data = await res.json();
-
-
-
-      if (!res.ok) {
-
-        throw new Error(
-          data.detail || "Prediction failed"
-        );
-
-      }
-
-
-
-      setResult(data);
-
-
-
-    } catch(err) {
-
-      console.error(err);
-
-      setError(
-        err.message ||
-        "Error fetching prediction"
-      );
-
+    if (!form.state || !form.county || !form.crop) {
+      setError("Choose a state, county, and crop to run a forecast.");
+      return;
     }
 
+    setLoading(true);
+    try {
+      const data = await requestApi("/predict-yield", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
 
-
-    setLoading(false);
-
+      if (!Number.isFinite(Number(data.predicted_yield))) {
+        throw new Error("The service returned a prediction that could not be displayed.");
+      }
+      setResult(data);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to generate a forecast.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-
-
-
+  const history = Array.isArray(result?.historical_yield)
+    ? [...result.historical_yield]
+        .filter((row) => Number.isFinite(Number(row.year)) && Number.isFinite(Number(row.yield)))
+        .sort((a, b) => Number(a.year) - Number(b.year))
+    : [];
+  const latestHistory = history.at(-1);
+  const weather = result?.weather;
+  const forecast = weather?.forecast || {};
+  const historicalWeather = weather?.historical_average || {};
+  const profit = result?.profit;
 
   return (
-
-    <div className="space-y-6">
-
-
-
-      {error && (
-
-        <div className="
-          p-3 rounded
-          bg-red-50
-          text-red-600
-          border border-red-200
-        ">
-
-          {error}
-
+    <div className="forecast-layout">
+      <section className="form-panel" aria-labelledby="form-title">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">YOUR FARM</p>
+            <h2 id="form-title">Build a forecast</h2>
+          </div>
+          <span className="step-indicator">01 / 01</span>
         </div>
 
-      )}
-
-
-
-
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4"
-      >
-
-
-
-        <select
-
-          name="state"
-
-          value={form.state}
-
-          onChange={handleStateChange}
-
-          className="
-          w-full px-4 py-3 rounded-xl
-          border border-gray-200
-          bg-gray-50
-          focus:bg-white
-          focus:outline-none
-          focus:border-emerald-500
-          focus:ring-4
-          focus:ring-emerald-100
-          transition shadow-sm
-          "
-
-        >
-
-          <option value="">
-            Select State
-          </option>
-
-
-          {STATES.map((s)=>(
-
-            <option
-              key={s}
-              value={s}
-            >
-              {s}
-            </option>
-
-          ))}
-
-
-        </select>
-
-
-
-
-
-        <select
-
-          name="county"
-
-          value={form.county}
-
-          onChange={handleChange}
-
-          disabled={
-            !form.state ||
-            counties.length === 0
-          }
-
-          className="
-          w-full px-4 py-3 rounded-xl
-          border border-gray-200
-          bg-gray-50
-          focus:bg-white
-          focus:outline-none
-          focus:border-emerald-500
-          focus:ring-4
-          focus:ring-emerald-100
-          transition shadow-sm
-          "
-
-        >
-
-          <option value="">
-            Select County
-          </option>
-
-
-          {counties.map((c)=>(
-
-            <option
-              key={c}
-              value={c}
-            >
-              {c}
-            </option>
-
-          ))}
-
-
-        </select>
-
-
-
-
-
-        <select
-
-          name="crop"
-
-          value={form.crop}
-
-          onChange={handleChange}
-
-
-          className="
-          w-full px-4 py-3 rounded-xl
-          border border-gray-200
-          bg-gray-50
-          focus:bg-white
-          focus:outline-none
-          focus:border-emerald-500
-          focus:ring-4
-          focus:ring-emerald-100
-          transition shadow-sm
-          "
-
-        >
-
-
-          <option value="">
-            Select Crop
-          </option>
-
-
-
-          {CROPS.map((crop)=>(
-
-            <option
-              key={crop}
-              value={crop}
-            >
-              {crop}
-            </option>
-
-          ))}
-
-
-        </select>
-
-
-
-
-        <button
-
-          type="submit"
-
-          disabled={loading}
-
-          className="
-          w-full py-3
-          rounded-xl
-          bg-emerald-500
-          text-white
-          "
-
-        >
-
-          {
-            loading
-            ? "Analyzing..."
-            : "Predict Yield"
-          }
-
-        </button>
-
-
-
-      </form>
-
-
-
-
-      {result && (
-
-        <div className="space-y-4 mt-6">
-
-
-          <div className="
-            p-5
-            rounded-2xl
-            bg-emerald-50
-            text-center
-            shadow-sm
-          ">
-
-            <p className="text-sm text-emerald-600">
-              Predicted Yield
-            </p>
-
-
-            <p className="text-3xl font-bold mt-1">
-
-              {
-                result.predicted_yield.toFixed(2)
-              }
-
-            </p>
-
+        <p className="panel-description">
+          Select a location and crop to see a yield estimate based on your
+          historical records and the latest forecast.
+        </p>
+
+        {error && (
+          <div className="error-message" role="alert">
+            <span className="error-icon" aria-hidden="true">!</span>
+            <span>{error}</span>
           </div>
+        )}
 
+        <form className="forecast-form" onSubmit={handleSubmit}>
+          <label className="field">
+            <span className="field-label">State</span>
+            <select name="state" value={form.state} onChange={handleChange}>
+              <option value="">Choose a state</option>
+              {STATES.map((state) => (
+                <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+          </label>
 
-          <div className="
-            p-5
-            rounded-2xl
-            bg-gray-50
-            text-center
-            shadow-sm
-          ">
+          <label className="field">
+            <span className="field-label">County</span>
+            <select
+              name="county"
+              value={form.county}
+              onChange={handleChange}
+              disabled={!form.state || countiesLoading || counties.length === 0}
+            >
+              <option value="">
+                {countiesLoading ? "Loading counties…" : "Choose a county"}
+              </option>
+              {counties.map((county) => (
+                <option key={county} value={county}>{county}</option>
+              ))}
+            </select>
+          </label>
 
-            <p className="text-sm text-gray-600">
-              Historical Average
-            </p>
+          <label className="field">
+            <span className="field-label">Crop</span>
+            <select
+              name="crop"
+              value={form.crop}
+              onChange={handleChange}
+              disabled={cropsLoading || crops.length === 0}
+            >
+              <option value="">
+                {cropsLoading ? "Loading crops…" : "Choose a crop"}
+              </option>
+              {crops.map((crop) => (
+                <option key={crop} value={crop}>{crop}</option>
+              ))}
+            </select>
+          </label>
 
+          <button className="submit-button" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                Gathering forecast…
+              </>
+            ) : (
+              <>
+                Generate forecast
+                <span aria-hidden="true">→</span>
+              </>
+            )}
+          </button>
+        </form>
 
-            <p className="text-2xl font-semibold mt-1">
+        <p className="form-note">
+          Forecasts are estimates and should be used as a planning aid.
+        </p>
+      </section>
 
-              {
-                result.historical_yield?.length > 0
-                ? result.historical_yield[
-                    result.historical_yield.length - 1
-                  ].five_year_avg_yield?.toFixed(2)
-                  ?? "No data"
-                : "No data"
-              }
-
-            </p>
-
+      <section className="results-panel" aria-live="polite">
+        {!result ? (
+          <div className="empty-state">
+            <div className="empty-art" aria-hidden="true">
+              <span className="sun" />
+              <span className="field-line field-line-one" />
+              <span className="field-line field-line-two" />
+              <span className="field-line field-line-three" />
+              <span className="sprout">✳</span>
+            </div>
+            <p className="eyebrow">YOUR NEXT SEASON</p>
+            <h2>Your forecast starts here</h2>
+            <p>Choose your county and crop to explore expected yield, weather, and profitability.</p>
           </div>
-
-
-
-
-
-          {result.profit && (
-
-            <div className="
-              p-5
-              rounded-2xl
-              bg-white
-              border
-              shadow-md
-            ">
-
-
-              <p className="text-sm text-gray-500">
-                Estimated Profit
-              </p>
-
-
-              <p className="text-3xl font-bold mt-2">
-
-                $
-                {
-                  result.profit.profit_per_acre.toFixed(2)
-                }
-
-              </p>
-
-
-
-              <div className="
-                mt-3
-                text-sm
-                text-gray-600
-              ">
-
-
-                <p>
-                  Revenue/Acre:
-                  $
-                  {
-                    result.profit.revenue_per_acre.toFixed(2)
-                  }
-                </p>
-
-
-                <p>
-                  Cost/Acre:
-                  $
-                  {
-                    result.profit.cost_per_acre.toFixed(2)
-                  }
-                </p>
-
-
-                <p>
-                  Market Price:
-                  $
-                  {
-                    result.profit.price_per_unit.toFixed(2)
-                  }
-                  /bushel
-                </p>
-
-
+        ) : (
+          <div className="results-content">
+            <div className="results-heading">
+              <div>
+                <p className="eyebrow">FORECAST OVERVIEW</p>
+                <h2>{result.location?.county}, {result.location?.state}</h2>
+                <p className="location-subtitle">{result.location?.crop} · Estimated for {new Date().getFullYear()}</p>
               </div>
-
-
+              <span className="result-badge">Model estimate</span>
             </div>
 
-          )}
+            <div className="metrics-grid">
+              <Metric
+                label="Predicted yield"
+                value={formatNumber(result.predicted_yield, 2)}
+                unit=" bu / acre"
+                accent
+              />
+              <Metric
+                label="Recent 5-year average"
+                value={formatNumber(latestHistory?.five_year_avg_yield, 2)}
+                unit=" bu / acre"
+              />
+              {profit && (
+                <Metric
+                  label="Estimated profit"
+                  value={`$${formatNumber(profit.profit_per_acre, 2)}`}
+                  unit=" / acre"
+                />
+              )}
+            </div>
 
+            {profit && (
+              <div className="profit-details">
+                <span>Revenue <strong>${formatNumber(profit.revenue_per_acre, 2)}</strong></span>
+                <span>Estimated cost <strong>${formatNumber(profit.cost_per_acre, 2)}</strong></span>
+                <span>Market price ({profit.price_year}) <strong>${formatNumber(profit.price_per_unit, 2)} / bu</strong></span>
+              </div>
+            )}
 
-
-
-
-
-          {result.weather && (
-
-            <div className="grid grid-cols-2 gap-4">
-
-
-
-              <div className="
-                p-5
-                rounded-2xl
-                bg-white
-                border
-                shadow-md
-              ">
-
-
-                <p className="text-sm text-gray-500 mb-4">
-                  Forecast Weather
-                </p>
-
-
-                <div className="space-y-3">
-
-
+            {weather && (
+              <section className="data-section">
+                <div className="section-title-row">
                   <div>
-
-                    <p className="text-xs text-gray-400">
-                      Average Temperature
-                    </p>
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.forecast.avg_temp.toFixed(1)
-                      }
-                      °C
-
-                    </p>
-
+                    <p className="eyebrow">LOCAL CONDITIONS</p>
+                    <h3>Weather snapshot</h3>
                   </div>
-
-
-
-
-                  <div>
-
-                    <p className="text-xs text-gray-400">
-                      Total Rainfall
-                    </p>
-
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.forecast.total_rain.toFixed(1)
-                      }
-                      mm
-
-                    </p>
-
-
-                  </div>
-
-
-
-
-
-                  <div>
-
-                    <p className="text-xs text-gray-400">
-                      Average Wind
-                    </p>
-
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.forecast.avg_wind.toFixed(1)
-                      }
-                      m/s
-
-                    </p>
-
-
-                  </div>
-
-
+                  <span className="section-caption">16-day forecast · county historical average</span>
                 </div>
-
-
-              </div>
-
-
-
-
-
-
-              <div className="
-                p-5
-                rounded-2xl
-                bg-white
-                border
-                shadow-md
-              ">
-
-
-                <p className="text-sm text-gray-500 mb-4">
-                  Historical Weather
-                </p>
-
-
-                <div className="space-y-3">
-
-
-                  <div>
-
-                    <p className="text-xs text-gray-400">
-                      Average Temperature
-                    </p>
-
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.historical_average.temperature.toFixed(1)
-                      }
-                      °C
-
-                    </p>
-
-
-                  </div>
-
-
-
-
-
-                  <div>
-
-                    <p className="text-xs text-gray-400">
-                      Total Rainfall
-                    </p>
-
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.historical_average.rain.toFixed(1)
-                      }
-                      mm
-
-                    </p>
-
-
-                  </div>
-
-
-                  <div>
-
-                    <p className="text-xs text-gray-400">
-                      Average Wind
-                    </p>
-
-                    <p className="text-xl font-semibold">
-
-                      {
-                        result.weather.historical_average.wind?.toFixed(1)
-                      }
-                      m/s
-
-                    </p>
-
-                  </div>
-
-
+                <div className="weather-grid">
+                  <Metric label="Forecast temperature" value={formatNumber(forecast.avg_temp)} unit=" °C" />
+                  <Metric label="Forecast rainfall" value={formatNumber(forecast.total_rain)} unit=" mm" />
+                  <Metric label="Historical temperature" value={formatNumber(historicalWeather.temperature)} unit=" °C" />
+                  <Metric label="Historical rainfall" value={formatNumber(historicalWeather.rain)} unit=" mm" />
                 </div>
+              </section>
+            )}
 
-
-              </div>
-
-
-            </div>
-
-          )}
-
-
-
-
-
-
-
-          {
-            Array.isArray(result.historical_yield) &&
-            result.historical_yield.length > 0 &&
-            (
-
-            <div className="
-              p-5
-              rounded-2xl
-              bg-white
-              border
-              shadow-md
-            ">
-
-
-              <h3 className="font-semibold mb-3">
-
-                USDA Yield History (2010–2025)
-
-              </h3>
-
-
-
-
-              <div className="h-64 w-full">
-
-
-                <ResponsiveContainer
-                  width="100%"
-                  height="100%"
-                >
-
-
-                  <LineChart
-                    data={result.historical_yield}
-                  >
-
-
-                    <XAxis
-                      dataKey="year"
-                    />
-
-
-                    <YAxis />
-
-
-                    <Tooltip />
-
-
-
-                    <Line
-
-                      type="monotone"
-
-                      dataKey="yield"
-
-                      stroke="#10b981"
-
-                      strokeWidth={2}
-
-                    />
-
-
-                  </LineChart>
-
-
-                </ResponsiveContainer>
-
-
-              </div>
-
-
-
-            </div>
-
-
-            )
-
-          }
-
-
-
-
-
-        </div>
-
-
-      )}
-
-
-
+            {history.length > 0 && (
+              <section className="data-section history-section">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">USDA RECORDS</p>
+                    <h3>Yield history</h3>
+                  </div>
+                  <span className="section-caption">
+                    {history[0].year}–{history.at(-1).year} · bu / acre
+                  </span>
+                </div>
+                <div className="chart-wrap">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={history} margin={{ top: 10, right: 12, left: -18, bottom: 0 }}>
+                      <CartesianGrid stroke="#e9eee8" strokeDasharray="4 5" vertical={false} />
+                      <XAxis dataKey="year" tickLine={false} axisLine={false} tick={{ fill: "#829087", fontSize: 11 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: "#829087", fontSize: 11 }} />
+                      <Tooltip
+                        contentStyle={{ border: "1px solid #e6ebe4", borderRadius: 12, boxShadow: "0 8px 24px #172a1a14" }}
+                        formatter={(value) => [`${formatNumber(value, 2)} bu / acre`, "Yield"]}
+                        labelFormatter={(label) => `Year ${label}`}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="yield"
+                        stroke="#26734d"
+                        strokeWidth={3}
+                        dot={{ r: 3, fill: "#26734d", strokeWidth: 0 }}
+                        activeDot={{ r: 5, fill: "#26734d" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </section>
     </div>
-
-
   );
-
 }

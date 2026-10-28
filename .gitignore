@@ -12,8 +12,11 @@ venv/
 
 *.txt
 
+desktop.ini
+
 # Node
 node_modules/
 
 # Env files
 .env
+

@@ -19,7 +19,12 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,6 +78,13 @@ model = joblib.load(MODEL_PATH)
 feature_cols = joblib.load(
     FEATURE_PATH
 )
+
+TRAINED_CROPS = sorted(
+    col.removeprefix("crop_")
+    for col in feature_cols
+    if col.startswith("crop_")
+)
+
 
 COUNTY_COORDS = joblib.load(
     COUNTY_PATH
@@ -150,9 +162,15 @@ class YieldRequest(BaseModel):
 def predict_yield(req: YieldRequest):
 
 
-    state = req.state.upper()
-    county = req.county.upper()
-    crop = req.crop.upper()
+    state = req.state.strip().upper()
+    county = req.county.strip().upper()
+    crop = req.crop.strip().upper()
+
+    if crop not in TRAINED_CROPS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported crop. Available crops: {', '.join(TRAINED_CROPS)}"
+        )
 
 
 
@@ -480,10 +498,17 @@ def predict_yield(req: YieldRequest):
 # COUNTIES ENDPOINT
 # --------------------------------------------------
 
+@app.get("/crops")
+def get_crops():
+    return {
+        "crops": TRAINED_CROPS
+    }
+
+
 @app.get("/counties/{state}")
 def get_counties(state: str):
 
-    state = state.upper()
+    state = state.strip().upper()
 
 
     counties = sorted(

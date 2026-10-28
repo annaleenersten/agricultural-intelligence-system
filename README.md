@@ -158,6 +158,11 @@ API Documentation:
 http://127.0.0.1:8000/docs
 ```
 
+The available prediction crops are read from the loaded model's trained
+features and can be queried at `GET /crops`. The app only offers crops that
+the current model can predict; no dataset rebuild is needed to keep this list
+in sync.
+
 ---
 
 ## Frontend Setup

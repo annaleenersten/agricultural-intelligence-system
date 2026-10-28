@@ -1,19 +1,29 @@
-from backend.app.services.price_service import get_crop_price
+import pandas as pd
+
 from ml.data.locationsAndCrops_config import COST_PER_ACRE
+
+
+PRICE_FILE = "ml/data/processed/price_data.csv"
 
 
 def calculate_profit(crop, predicted_yield):
 
     crop = crop.upper()
 
-    price_df = get_crop_price(crop)
+    price_df = pd.read_csv(PRICE_FILE)
+    price_df["crop"] = price_df["crop"].astype(str).str.upper().str.strip()
+    price_df["year"] = pd.to_numeric(price_df["year"], errors="coerce")
+    price_df["price"] = pd.to_numeric(price_df["price"], errors="coerce")
+    price_df = price_df[
+        (price_df["crop"] == crop)
+        & price_df["year"].notna()
+        & price_df["price"].notna()
+    ]
 
-
-    if price_df is None or price_df.empty:
+    if price_df.empty:
         return None
 
 
-    # Get newest available price
     price_row = (
         price_df
         .sort_values("year")
